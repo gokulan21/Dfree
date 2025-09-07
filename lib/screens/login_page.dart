@@ -1,5 +1,6 @@
-// ignore_for_file: use_build_context_synchronously, unused_import
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
+import 'package:firebase_auth/firebase_auth.dart' show UserCredential;
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'package:freelance_hub/freelan/home_page.dart';
@@ -22,13 +23,10 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _showHint = false;
   String _hintText = '';
   bool _isLoading = false;
+  String _errorMessage = '';
 
   late AnimationController _pulseController;
-
-  final Map<String, String> _correctPasswords = {
-    'client': 'client123',
-    'freelancer': 'free123',
-  };
+  late AnimationController _errorController;
 
   @override
   void initState() {
@@ -37,11 +35,22 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+    _errorController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    // Pre-fill demo credentials for easier testing
+    _selectedRole = 'client';
+    _usernameController.text = 'hdkdj';
+    _passwordController.text = 'client123';
+    _onRoleChanged('client');
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _errorController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -50,12 +59,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void _onRoleChanged(String? value) {
     setState(() {
       _selectedRole = value;
+      _errorMessage = ''; // Clear any previous errors
+      
       if (value == 'client') {
         _hintText = 'Client password: client123';
         _showHint = true;
+        // Auto-fill for demo
+        _passwordController.text = 'client123';
       } else if (value == 'freelancer') {
         _hintText = 'Freelancer password: free123';
         _showHint = true;
+        // Auto-fill for demo
+        _passwordController.text = 'free123';
       } else {
         _showHint = false;
       }
@@ -69,12 +84,16 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleLogin() async {
+    setState(() {
+      _errorMessage = '';
+    });
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_selectedRole == null || _selectedRole!.isEmpty) {
-      _showSnackBar('Please select your role');
+      _showError('Please select your role');
       return;
     }
 
@@ -85,53 +104,52 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     try {
       final passwordText = _passwordController.text.trim();
       final usernameText = _usernameController.text.trim();
-      final expectedPassword = _correctPasswords[_selectedRole!];
 
-      if (passwordText == expectedPassword) {
-        // Use Firebase authentication
-        try {
-          await AuthService().signInWithCredentials(
-            usernameText,
-            passwordText,
-            _selectedRole!,
-          );
+      print('🔄 Attempting login with:');
+      print('Username: $usernameText');
+      print('Role: $_selectedRole');
+      print('Password: $passwordText');
 
+      // Use Firebase authentication through AuthService
+      UserCredential? result = await AuthService().signInWithCredentials(
+        usernameText,
+        passwordText,
+        _selectedRole!,
+      );
+
+      if (result != null && result.user != null) {
+        if (mounted) {
           _showSnackBar(
             'Welcome, $usernameText! Login successful.',
             isSuccess: true,
           );
 
-          // Navigate to appropriate dashboard based on role
-          if (mounted) {
-            if (_selectedRole == 'client') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                    builder: (context) => const DashboardScreen()),
-              );
-            } else if (_selectedRole == 'freelancer') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => HomePage()),
-              );
-            }
-          }
-        } catch (authError) {
-          if (mounted) {
-            _showSnackBar('Authentication failed: ${authError.toString()}');
+          // Small delay to show success message
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate based on role
+          if (_selectedRole == 'client') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            );
+          } else if (_selectedRole == 'freelancer') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => HomePage()),
+            );
           }
         }
       } else {
-        if (mounted) {
-          _pulseController.forward().then((_) {
-            if (mounted) {
-              _pulseController.reverse();
-            }
-          });
-          _showSnackBar('Incorrect password. Please try again.');
-        }
+        throw Exception('Login failed - no user returned');
       }
     } catch (e) {
+      print('❌ Login error: $e');
       if (mounted) {
-        _showSnackBar('Login failed: ${e.toString()}');
+        _showError(e.toString().replaceFirst('Exception: ', ''));
+        _pulseController.forward().then((_) {
+          if (mounted) {
+            _pulseController.reverse();
+          }
+        });
       }
     } finally {
       if (mounted) {
@@ -142,13 +160,45 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
+  void _showError(String message) {
+    setState(() {
+      _errorMessage = message;
+    });
+    _errorController.forward().then((_) {
+      if (mounted) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            _errorController.reverse();
+            setState(() {
+              _errorMessage = '';
+            });
+          }
+        });
+      }
+    });
+  }
+
   void _showSnackBar(String message, {bool isSuccess = false}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
-          backgroundColor: isSuccess ? Colors.green : Colors.red,
+          content: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          backgroundColor: isSuccess ? Colors.green[600] : Colors.red[600],
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          duration: Duration(seconds: isSuccess ? 2 : 4),
         ),
       );
     }
@@ -199,10 +249,14 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   _buildUsernameField(),
                                   const SizedBox(height: 24),
                                   _buildPasswordField(),
+                                  if (_errorMessage.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    _buildErrorMessage(),
+                                  ],
                                   const SizedBox(height: 32),
                                   _buildLoginButton(),
                                   const SizedBox(height: 24),
-                                  _buildHelpLink(),
+                                  _buildDemoInfo(),
                                 ],
                               ),
                             ),
@@ -348,14 +402,11 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 'Choose your role...',
                 style: TextStyle(color: Colors.grey),
               ),
-              dropdownColor: const Color(0xFF424242),
+              dropdownColor: const Color(0xFF2A1B5C),
               style: const TextStyle(color: Colors.white),
               items: const [
                 DropdownMenuItem(value: 'client', child: Text('Client')),
-                DropdownMenuItem(
-                  value: 'freelancer',
-                  child: Text('Freelancer'),
-                ),
+                DropdownMenuItem(value: 'freelancer', child: Text('Freelancer')),
               ],
               onChanged: _onRoleChanged,
               validator: (value) {
@@ -420,8 +471,8 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter your username';
                 }
-                if (value.trim().length < 3) {
-                  return 'Username must be at least 3 characters';
+                if (value.trim().length < 2) {
+                  return 'Username must be at least 2 characters';
                 }
                 return null;
               },
@@ -480,6 +531,7 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   icon: Icon(
                     _passwordVisible ? Icons.visibility_off : Icons.visibility,
                     color: Colors.grey,
+                    size: 20,
                   ),
                   onPressed: _togglePasswordVisibility,
                 ),
@@ -514,18 +566,53 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildErrorMessage() {
+    return AnimatedBuilder(
+      animation: _errorController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: 0.8 + (_errorController.value * 0.2),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red[600]?.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[400]!, width: 1),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _errorMessage,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildLoginButton() {
     return Container(
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1B1737), Color(0xFF1E1A3C), Color(0xFF2A1B5C)],
+          colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF1EC0).withOpacity(0.3),
+            color: const Color(0xFF8C33FF).withOpacity(0.3),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
@@ -535,20 +622,38 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         onPressed: _isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
-          shadowColor: const Color.fromARGB(0, 5, 5, 5),
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: _isLoading
-            ? const CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Signing in...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               )
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.login, color: Colors.white),
+                  Icon(Icons.login, color: Colors.white, size: 20),
                   SizedBox(width: 8),
                   Text(
                     'Login',
@@ -564,19 +669,39 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHelpLink() {
-    return GestureDetector(
-      onTap: () {
-        _showSnackBar('Help feature coming soon!');
-      },
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildDemoInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A1B5C).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF33CFFF).withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.help_outline, color: Color(0xFF33CFFF), size: 16),
-          SizedBox(width: 4),
+          Row(
+            children: [
+              const Icon(Icons.info_outline, color: Color(0xFF33CFFF), size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Demo Credentials',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[300],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            'Need help?',
-            style: TextStyle(fontSize: 14, color: Color(0xFF33CFFF)),
+            'Client: Any username + "client123"\nFreelancer: Any username + "free123"',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[400],
+              height: 1.4,
+            ),
           ),
         ],
       ),
