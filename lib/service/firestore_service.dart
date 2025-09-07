@@ -1,4 +1,3 @@
-// firestore_service.dart
 // ignore_for_file: avoid_print
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,7 +10,7 @@ class FirestoreService {
 
   String get _userId => _auth.currentUser?.uid ?? '';
 
-  // **Freelancers Collection Methods**
+  // Freelancers Collection Methods
   Future<void> addFreelancer(Freelancer freelancer) async {
     try {
       await _firestore
@@ -50,7 +49,6 @@ class FirestoreService {
       return snapshot.docs.map((doc) {
         Map<String, dynamic> data = doc.data();
         return Freelancer(
-          id: doc.id,
           name: data['name'] ?? '',
           role: data['role'] ?? '',
           rating: (data['rating'] ?? 0.0).toDouble(),
@@ -96,7 +94,7 @@ class FirestoreService {
     }
   }
 
-  // **Projects Collection Methods**
+  // Projects Collection Methods
   Future<void> addProject(Project project) async {
     try {
       await _firestore
@@ -134,7 +132,6 @@ class FirestoreService {
       return snapshot.docs.map((doc) {
         Map<String, dynamic> data = doc.data();
         return Project(
-          id: doc.id,
           name: data['name'] ?? '',
           assignee: data['assignee'] ?? '',
           dueDate: data['dueDate'] ?? '',
@@ -175,9 +172,78 @@ class FirestoreService {
     }
   }
 
-  // **Chat Messages Methods**
+  Future<void> updateProject(String projectId, Map<String, dynamic> data) async {
+    try {
+      data['updatedAt'] = FieldValue.serverTimestamp();
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('projects')
+          .doc(projectId)
+          .update(data);
+    } catch (e) {
+      print('Error updating project: $e');
+      rethrow;
+    }
+  }
+
+  // Assign project to freelancer
+  Future<void> assignProject({
+    required String freelancerName,
+    required String companyName,
+    required String projectTitle,
+    required String description,
+    required DateTime startDate,
+    required DateTime dueDate,
+  }) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('projects')
+          .add({
+        'name': projectTitle,
+        'assignee': freelancerName,
+        'companyName': companyName,
+        'dueDate': '${dueDate.day}/${dueDate.month}/${dueDate.year}',
+        'startDate': '${startDate.day}/${startDate.month}/${startDate.year}',
+        'status': 'pending',
+        'progress': 0,
+        'priority': 'medium',
+        'description': description,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'isActive': true,
+        'clientId': _userId,
+      });
+
+      // Update freelancer workload (simplified - you might want more complex logic)
+      QuerySnapshot freelancerQuery = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('freelancers')
+          .where('name', isEqualTo: freelancerName)
+          .limit(1)
+          .get();
+
+      if (freelancerQuery.docs.isNotEmpty) {
+        DocumentSnapshot freelancerDoc = freelancerQuery.docs.first;
+        int currentWorkload = freelancerDoc['workload'] ?? 0;
+        await freelancerDoc.reference.update({
+          'workload': (currentWorkload + 20).clamp(0, 100), // Add 20% workload
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error assigning project: $e');
+      rethrow;
+    }
+  }
+
+  // Chat Messages Methods
   Future<void> sendMessage(String recipientName, String message) async {
     try {
+      // For demo purposes, we'll use recipient name to create chat ID
       String chatId = _generateChatId(_userId, '${recipientName.toLowerCase()}_freelancer_id');
       
       await _firestore
@@ -194,6 +260,7 @@ class FirestoreService {
         'messageType': 'text',
       });
 
+      // Update chat metadata
       await _firestore.collection('chats').doc(chatId).set({
         'participants': [_userId, '${recipientName.toLowerCase()}_freelancer_id'],
         'participantNames': {
@@ -237,9 +304,10 @@ class FirestoreService {
     });
   }
 
-  // **Analytics and Reports**
+  // Analytics and Reports
   Future<Map<String, dynamic>> getDashboardMetrics() async {
     try {
+      // Get freelancers count
       QuerySnapshot freelancersSnapshot = await _firestore
           .collection('users')
           .doc(_userId)
@@ -247,6 +315,7 @@ class FirestoreService {
           .where('isActive', isEqualTo: true)
           .get();
 
+      // Get projects by status
       QuerySnapshot projectsSnapshot = await _firestore
           .collection('users')
           .doc(_userId)
@@ -278,6 +347,7 @@ class FirestoreService {
         }
       }
 
+      // Calculate average rating from freelancers
       for (var doc in freelancersSnapshot.docs) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         totalRating += (data['rating'] ?? 0.0).toDouble();
@@ -294,7 +364,7 @@ class FirestoreService {
         'completedProjects': completedProjects,
         'averageRating': averageRating,
         'projectsByStatus': projectsByStatus,
-        'completedThisMonth': completedProjects,
+        'completedThisMonth': completedProjects, // Simplified for demo
       };
     } catch (e) {
       print('Error getting dashboard metrics: $e');
@@ -302,7 +372,7 @@ class FirestoreService {
     }
   }
 
-  // **Helper Methods**
+  // Helper methods
   String _generateChatId(String userId1, String userId2) {
     List<String> ids = [userId1, userId2];
     ids.sort();
@@ -317,11 +387,47 @@ class FirestoreService {
     return '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
   }
 
-  Future getUserProfile() async {}
+  // Update notification preferences
+  Future<void> updateNotificationPreferences({
+    required bool projectUpdates,
+    required bool newMessages,
+    required bool weeklyReports,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(_userId).update({
+        'notificationPreferences': {
+          'projectUpdates': projectUpdates,
+          'newMessages': newMessages,
+          'weeklyReports': weeklyReports,
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating notification preferences: $e');
+      rethrow;
+    }
+  }
 
-  Future<void> updateNotificationPreferences({required bool projectUpdates, required bool newMessages, required bool weeklyReports}) async {}
-
-  Future<void> updateUserProfile(Map<String, String> updateData) async {}
-
-  Future getAnalyticsData() async {}
+  // Get notification preferences
+  Future<Map<String, bool>> getNotificationPreferences() async {
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(_userId).get();
+      Map<String, dynamic>? data = userDoc.data() as Map<String, dynamic>?;
+      
+      Map<String, dynamic>? prefs = data?['notificationPreferences'];
+      
+      return {
+        'projectUpdates': prefs?['projectUpdates'] ?? true,
+        'newMessages': prefs?['newMessages'] ?? true,
+        'weeklyReports': prefs?['weeklyReports'] ?? false,
+      };
+    } catch (e) {
+      print('Error getting notification preferences: $e');
+      return {
+        'projectUpdates': true,
+        'newMessages': true,
+        'weeklyReports': false,
+      };
+    }
+  }
 }
