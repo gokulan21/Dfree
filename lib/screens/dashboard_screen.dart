@@ -1,4 +1,5 @@
-// ignore_for_file: deprecated_member_use
+// dashboard_screen.dart
+// ignore_for_file: avoid_print
 
 import 'package:flutter/material.dart';
 import '../models.dart';
@@ -8,6 +9,7 @@ import '../client/project_page.dart';
 import '../client/communication_page.dart';
 import '../client/reports_page.dart';
 import '../client/settings_page.dart';
+import '../service/firestore_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,117 +19,52 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  
   int selectedIndex = 0;
   String searchQuery = '';
   String selectedProjectFilter = 'all';
   bool isSidebarOpen = false;
-  String currentChat = 'Gokul';
+  String currentChat = '';
   final TextEditingController messageController = TextEditingController();
   
-  final List<ChatMessage> chatMessages = [
-    ChatMessage(
-      message: "Hi! I've completed the homepage design. Could you please review it?",
-      isReceived: true,
-      time: "10:30 AM",
-    ),
-    ChatMessage(
-      message: "Great work! The design looks amazing. Just a small change needed in the hero section.",
-      isReceived: false,
-      time: "10:35 AM",
-    ),
-    ChatMessage(
-      message: "Sure! I'll make those changes right away. Should I also update the color scheme?",
-      isReceived: true,
-      time: "10:40 AM",
-    ),
-    ChatMessage(
-      message: "Yes, please use the brand colors we discussed. Looking forward to the final version!",
-      isReceived: false,
-      time: "10:45 AM",
-    ),
-  ];
+  List<ChatMessage> chatMessages = [];
+  List<Freelancer> freelancers = [];
+  List<Project> projects = [];
+  Map<String, dynamic> dashboardMetrics = {};
+  
+  bool _isLoading = true;
+  String? _error;
 
-  final List<Freelancer> freelancers = [
-    Freelancer(
-      name: "Gokul",
-      role: "UI/UX Designer",
-      rating: 5.0,
-      skills: ["Figma", "Adobe XD", "Photoshop"],
-      workload: 75,
-      email: "gokul@email.com",
-      phone: "+1 (555) 123-4567",
-      bio: "3 years experience in UI/UX design with focus on modern web applications. Specialized in user research and creating intuitive interfaces.",
-    ),
-    Freelancer(
-      name: "Mohana",
-      role: "Backend Developer",
-      rating: 4.8,
-      skills: ["Node.js", "Python", "MongoDB"],
-      workload: 60,
-      email: "mohana@email.com",
-      phone: "+1 (555) 234-5678",
-      bio: "Senior backend developer with expertise in scalable web applications and database design. 5 years of experience in server-side development.",
-    ),
-    Freelancer(
-      name: "Sarah",
-      role: "Frontend Developer",
-      rating: 4.9,
-      skills: ["React", "Vue.js", "TypeScript"],
-      workload: 45,
-      email: "sarah@email.com",
-      phone: "+1 (555) 345-6789",
-      bio: "Frontend specialist with strong background in modern JavaScript frameworks. Expert in creating responsive and interactive web applications.",
-    ),
-    Freelancer(
-      name: "Alex",
-      role: "Full Stack Developer",
-      rating: 4.7,
-      skills: ["React", "Node.js", "AWS"],
-      workload: 80,
-      email: "alex@email.com",
-      phone: "+1 (555) 456-7890",
-      bio: "Full-stack developer with comprehensive knowledge of both frontend and backend technologies. AWS certified with cloud deployment expertise.",
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeData();
+  }
 
-  final List<Project> projects = [
-    Project(
-      name: "E-commerce Website",
-      assignee: "Gokul",
-      dueDate: "Dec 25, 2024",
-      status: ProjectStatus.inProgress,
-      progress: 85,
-      priority: Priority.high,
-      description: "A comprehensive e-commerce platform with modern design and robust backend functionality. Features include user authentication, product catalog, shopping cart, payment integration, and admin dashboard.",
-    ),
-    Project(
-      name: "Mobile App Backend",
-      assignee: "Mohana",
-      dueDate: "Jan 15, 2025",
-      status: ProjectStatus.inProgress,
-      progress: 60,
-      priority: Priority.medium,
-      description: "Backend API development for mobile application including user management, data synchronization, push notifications, and third-party integrations. Built with Node.js and MongoDB.",
-    ),
-    Project(
-      name: "Brand Identity Design",
-      assignee: "Sarah",
-      dueDate: "Dec 20, 2024",
-      status: ProjectStatus.overdue,
-      progress: 95,
-      priority: Priority.high,
-      description: "Complete brand identity package including logo design, color palette, typography, business cards, letterheads, and brand guidelines. Project is 95% complete with final revisions pending.",
-    ),
-    Project(
-      name: "Dashboard Analytics",
-      assignee: "Alex",
-      dueDate: "Jan 30, 2025",
-      status: ProjectStatus.completed,
-      progress: 100,
-      priority: Priority.low,
-      description: "Advanced analytics dashboard with real-time data visualization, custom reporting, and interactive charts. Successfully delivered ahead of schedule with all requirements met.",
-    ),
-  ];
+  Future<void> _initializeData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // Load dashboard metrics
+      final metrics = await _firestoreService.getDashboardMetrics();
+      setState(() {
+        dashboardMetrics = metrics;
+      });
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -137,6 +74,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF1E1A3C),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF33CFFF)),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Loading dashboard...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF1E1A3C),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
+              Text(
+                'Error: $_error',
+                style: const TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _initializeData,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
     final isTablet = screenWidth >= 768 && screenWidth < 1024;
@@ -146,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: Row(
           children: [
-            // Sidebar - Responsive visibility
+            // Sidebar
             if (!isMobile || isSidebarOpen)
               Container(
                 width: isMobile ? screenWidth * 0.8 : (isTablet ? 200 : 250),
@@ -160,14 +143,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     setState(() {
                       selectedIndex = index;
                       if (isMobile) {
-                        isSidebarOpen = false; // Auto-close on mobile after selection
+                        isSidebarOpen = false;
                       }
                     });
                   },
                 ),
               ),
             
-            // Overlay for mobile when sidebar is open
+            // Overlay for mobile
             if (isMobile && isSidebarOpen)
               Expanded(
                 child: GestureDetector(
@@ -197,28 +180,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             width: 1,
                           ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: Row(
                         children: [
-                          // Menu Button
                           IconButton(
                             icon: const Icon(Icons.menu, color: Colors.white, size: 24),
                             onPressed: () => setState(() => isSidebarOpen = !isSidebarOpen),
-                            padding: const EdgeInsets.all(8),
-                            constraints: const BoxConstraints(
-                              minWidth: 40,
-                              minHeight: 40,
-                            ),
                           ),
-                          
-                          // Page Title
                           if (!isMobile) ...[
                             const SizedBox(width: 16),
                             Expanded(
@@ -229,28 +197,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
                               ),
                             ),
                           ],
-                          
                           const Spacer(),
-                          
-                          // SEARCH ICON REMOVED - No more search button for mobile
-                          
-                          // Notification Button
                           IconButton(
-                            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 24),
+                            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                             onPressed: () => _showNotifications(),
-                            padding: const EdgeInsets.all(8),
-                            constraints: const BoxConstraints(
-                              minWidth: 40,
-                              minHeight: 40,
-                            ),
                           ),
-                          
-                          // Profile Button - Only shows on desktop/tablet
                           if (!isMobile) ...[
                             const SizedBox(width: 8),
                             Container(
@@ -262,11 +216,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 18,
-                              ),
+                              child: const Icon(Icons.person, color: Colors.white, size: 18),
                             ),
                           ],
                         ],
@@ -293,133 +243,152 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _getPageTitle() {
     switch (selectedIndex) {
-      case 0:
-        return 'Dashboard';
-      case 1:
-        return 'Projects';
-      case 2:
-        return 'Communication';
-      case 3:
-        return 'Reports';
-      case 4:
-        return 'Settings';
-      default:
-        return 'Dashboard';
+      case 0: return 'Dashboard';
+      case 1: return 'Projects';
+      case 2: return 'Communication';
+      case 3: return 'Reports';
+      case 4: return 'Settings';
+      default: return 'Dashboard';
     }
   }
 
   Widget _buildPageContent(bool isMobile) {
-    try {
-      switch (selectedIndex) {
-        case 0:
-          return HomePage(
-            freelancers: freelancers,
-            searchQuery: searchQuery,
-            onSearchChanged: (value) => setState(() => searchQuery = value), 
-            onFreelancerTap: (Freelancer freelancer) {},
-          );
-        case 1:
-          return ProjectsPage(
-            projects: projects,
-            selectedFilter: selectedProjectFilter,
-            onFilterChanged: (filter) => setState(() => selectedProjectFilter = filter),
-          );
-        case 2:
-          return CommunicationPage(
-            freelancers: freelancers,
-            currentChat: currentChat,
-            chatMessages: chatMessages,
-            messageController: messageController,
-            onChatChanged: (name) => setState(() => currentChat = name),
-            onMessageSent: _sendMessage,
-          );
-        case 3:
-          return const ReportsPage();
-        case 4:
-          return const SettingsPage();
-        default:
-          return HomePage(
-            freelancers: freelancers,
-            searchQuery: searchQuery,
-            onSearchChanged: (value) => setState(() => searchQuery = value), 
-            onFreelancerTap: (Freelancer freelancer) {},
-          );
-      }
-    } catch (e) {
-      // Error fallback
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Error loading page',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Please try again or contact support',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => setState(() => selectedIndex = 0),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF33CFFF),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Go to Dashboard'),
-            ),
-          ],
-        ),
-      );
+    switch (selectedIndex) {
+      case 0:
+        return StreamBuilder<List<Freelancer>>(
+          stream: _firestoreService.getFreelancers(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              );
+            }
+
+            final freelancers = snapshot.data ?? [];
+            return HomePage(
+              freelancers: freelancers,
+              searchQuery: searchQuery,
+              onSearchChanged: (value) => setState(() => searchQuery = value),
+              onFreelancerTap: (freelancer) => _showFreelancerDetails(freelancer),
+              dashboardMetrics: dashboardMetrics,
+            );
+          },
+        );
+        
+      case 1:
+        return StreamBuilder<List<Project>>(
+          stream: _firestoreService.getProjects(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              );
+            }
+
+            final projects = snapshot.data ?? [];
+            return ProjectsPage(
+              projects: projects,
+              selectedFilter: selectedProjectFilter,
+              onFilterChanged: (filter) => setState(() => selectedProjectFilter = filter),
+            );
+          },
+        );
+        
+      case 2:
+        return StreamBuilder<List<Freelancer>>(
+          stream: _firestoreService.getFreelancers(),
+          builder: (context, snapshot) {
+            final freelancers = snapshot.data ?? [];
+            if (currentChat.isEmpty && freelancers.isNotEmpty) {
+              currentChat = freelancers.first.name;
+            }
+            
+            return CommunicationPage(
+              freelancers: freelancers,
+              currentChat: currentChat,
+              chatMessages: chatMessages,
+              messageController: messageController,
+              onChatChanged: (name) => _onChatChanged(name),
+              onMessageSent: _sendMessage,
+            );
+          },
+        );
+        
+      case 3:
+        return ReportsPage(dashboardMetrics: dashboardMetrics);
+        
+      case 4:
+        return const SettingsPage();
+        
+      default:
+        return const Center(
+          child: Text(
+            'Page not found',
+            style: TextStyle(color: Colors.white),
+          ),
+        );
     }
   }
 
-  void _sendMessage() {
-    final messageText = messageController.text.trim();
-    if (messageText.isNotEmpty) {
+  void _onChatChanged(String name) {
+    setState(() {
+      currentChat = name;
+      chatMessages.clear();
+    });
+    
+    // Load chat messages for the selected freelancer
+    _firestoreService.getChatMessages(name).listen((messages) {
       setState(() {
-        chatMessages.add(ChatMessage(
-          message: messageText,
-          isReceived: false,
-          time: _getCurrentTimeString(),
-        ));
-        messageController.clear();
+        chatMessages = messages;
       });
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final messageText = messageController.text.trim();
+    if (messageText.isNotEmpty && currentChat.isNotEmpty) {
+      try {
+        await _firestoreService.sendMessage(currentChat, messageText);
+        messageController.clear();
+      } catch (e) {
+        _showErrorSnackBar('Failed to send message: $e');
+      }
     }
   }
 
-  String _getCurrentTimeString() {
-    final now = DateTime.now();
-    final hour = now.hour;
-    final minute = now.minute;
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+  void _showFreelancerDetails(Freelancer freelancer) {
+    // Show freelancer modal or navigate to details page
+    print('Show details for ${freelancer.name}');
   }
 
   void _showNotifications() {
     ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No new notifications'),
+        backgroundColor: Color(0xFF262047),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('No new notifications'),
-        backgroundColor: const Color(0xFF262047),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        content: Text(message),
+        backgroundColor: Colors.red,
       ),
     );
   }

@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, body_might_complete_normally_nullable
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -369,4 +369,8 @@ class AuthService {
       print('❌ Error cleaning demo accounts: $e');
     }
   }
+
+  getCurrentUser() {}
+
+  Future<UserCredential?> signInDemo(String usernameText, String s) async {}
 }

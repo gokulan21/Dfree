@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print
+// ignore_for_file: use_build_context_synchronously, avoid_print, prefer_const_constructors
 
 import 'package:firebase_auth/firebase_auth.dart' show UserCredential;
 import 'package:flutter/material.dart';
@@ -20,13 +20,47 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   String? _selectedRole;
   bool _passwordVisible = false;
-  bool _showHint = false;
-  String _hintText = '';
   bool _isLoading = false;
   String _errorMessage = '';
+  bool _isDemoMode = false;
 
   late AnimationController _pulseController;
   late AnimationController _errorController;
+
+  // Dynamic configuration
+  final Map<String, dynamic> _appConfig = {
+    'appName': 'FreelanceHub',
+    'appDescription': 'Connect. Create. Collaborate.',
+    'enableDemoMode': true,
+    'roles': [
+      {
+        'id': 'client',
+        'name': 'Client',
+        'icon': Icons.business,
+        'demoPassword': 'client123',
+        'route': () => const DashboardScreen(),
+      },
+      {
+        'id': 'freelancer',
+        'name': 'Freelancer',
+        'icon': Icons.work,
+        'demoPassword': 'free123',
+        'route': () => HomePage(),
+      },
+    ],
+    'validation': {
+      'minUsernameLength': 2,
+      'minPasswordLength': 6,
+      'requireSpecialChar': false,
+      'requireNumber': false,
+    },
+    'theme': {
+      'primaryGradient': [Color(0xFF8C33FF), Color(0xFF33CFFF)],
+      'backgroundGradient': [Color(0xFF1B1737), Color(0xFF1E1A3C), Color(0xFF2A1B5C)],
+      'cardColor': Color(0xFF2A1B5C),
+      'accentColor': Color(0xFF33CFFF),
+    }
+  };
 
   @override
   void initState() {
@@ -40,11 +74,7 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       vsync: this,
     );
     
-    // Pre-fill demo credentials for easier testing
-    _selectedRole = 'client';
-    _usernameController.text = 'hdkdj';
-    _passwordController.text = 'client123';
-    _onRoleChanged('client');
+    _isDemoMode = _appConfig['enableDemoMode'] ?? false;
   }
 
   @override
@@ -59,28 +89,91 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void _onRoleChanged(String? value) {
     setState(() {
       _selectedRole = value;
-      _errorMessage = ''; // Clear any previous errors
+      _errorMessage = '';
       
-      if (value == 'client') {
-        _hintText = 'Client password: client123';
-        _showHint = true;
-        // Auto-fill for demo
-        _passwordController.text = 'client123';
-      } else if (value == 'freelancer') {
-        _hintText = 'Freelancer password: free123';
-        _showHint = true;
-        // Auto-fill for demo
-        _passwordController.text = 'free123';
-      } else {
-        _showHint = false;
+      if (_isDemoMode && value != null) {
+        final role = _getRoleConfig(value);
+        if (role != null) {
+          _passwordController.text = role['demoPassword'] ?? '';
+        }
       }
     });
+  }
+
+  Map<String, dynamic>? _getRoleConfig(String roleId) {
+    final roles = _appConfig['roles'] as List<Map<String, dynamic>>;
+    return roles.firstWhere(
+      (role) => role['id'] == roleId,
+      orElse: () => {},
+    );
   }
 
   void _togglePasswordVisibility() {
     setState(() {
       _passwordVisible = !_passwordVisible;
     });
+  }
+
+  void _toggleDemoMode() {
+    setState(() {
+      _isDemoMode = !_isDemoMode;
+      if (!_isDemoMode) {
+        _passwordController.clear();
+      } else if (_selectedRole != null) {
+        final role = _getRoleConfig(_selectedRole!);
+        if (role != null) {
+          _passwordController.text = role['demoPassword'] ?? '';
+        }
+      }
+    });
+  }
+
+  String? _validateUsername(String? value) {
+    final validation = _appConfig['validation'] as Map<String, dynamic>;
+    
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your username';
+    }
+    
+    final minLength = validation['minUsernameLength'] ?? 2;
+    if (value.trim().length < minLength) {
+      return 'Username must be at least $minLength characters';
+    }
+    
+    // Add more validation rules as needed
+    if (value.contains('@') && !_isValidEmail(value)) {
+      return 'Please enter a valid email address';
+    }
+    
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    final validation = _appConfig['validation'] as Map<String, dynamic>;
+    
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your password';
+    }
+    
+    final minLength = validation['minPasswordLength'] ?? 6;
+    if (value.length < minLength) {
+      return 'Password must be at least $minLength characters';
+    }
+    
+    if (validation['requireNumber'] == true && !value.contains(RegExp(r'\d'))) {
+      return 'Password must contain at least one number';
+    }
+    
+    if (validation['requireSpecialChar'] == true && 
+        !value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      return 'Password must contain at least one special character';
+    }
+    
+    return null;
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   Future<void> _handleLogin() async {
@@ -108,14 +201,25 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       print('🔄 Attempting login with:');
       print('Username: $usernameText');
       print('Role: $_selectedRole');
-      print('Password: $passwordText');
 
-      // Use Firebase authentication through AuthService
-      UserCredential? result = await AuthService().signInWithCredentials(
-        usernameText,
-        passwordText,
-        _selectedRole!,
-      );
+      UserCredential? result;
+
+      if (_isDemoMode) {
+        // Demo mode authentication
+        final role = _getRoleConfig(_selectedRole!);
+        if (role != null && passwordText == role['demoPassword']) {
+          result = await AuthService().signInDemo(usernameText, _selectedRole!);
+        } else {
+          throw Exception('Invalid demo credentials');
+        }
+      } else {
+        // Real authentication
+        result = await AuthService().signInWithCredentials(
+          usernameText,
+          passwordText,
+          _selectedRole!,
+        );
+      }
 
       if (result != null && result.user != null) {
         if (mounted) {
@@ -124,18 +228,16 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             isSuccess: true,
           );
 
-          // Small delay to show success message
           await Future.delayed(const Duration(milliseconds: 500));
 
-          // Navigate based on role
-          if (_selectedRole == 'client') {
+          // Dynamic navigation based on role configuration
+          final roleConfig = _getRoleConfig(_selectedRole!);
+          if (roleConfig != null && roleConfig['route'] != null) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+              MaterialPageRoute(builder: (context) => roleConfig['route']()),
             );
-          } else if (_selectedRole == 'freelancer') {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => HomePage()),
-            );
+          } else {
+            throw Exception('Navigation route not configured for role: $_selectedRole');
           }
         }
       } else {
@@ -206,13 +308,16 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final backgroundGradient = theme['backgroundGradient'] as List<Color>;
+    
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1B1737), Color(0xFF1E1A3C), Color(0xFF2A1B5C)],
+            colors: backgroundGradient,
           ),
         ),
         child: SafeArea(
@@ -244,6 +349,8 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   const SizedBox(height: 32),
                                   _buildWelcomeSection(),
                                   const SizedBox(height: 32),
+                                  _buildDemoModeToggle(),
+                                  const SizedBox(height: 16),
                                   _buildRoleSelector(),
                                   const SizedBox(height: 24),
                                   _buildUsernameField(),
@@ -256,7 +363,7 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   const SizedBox(height: 32),
                                   _buildLoginButton(),
                                   const SizedBox(height: 24),
-                                  _buildDemoInfo(),
+                                  if (_isDemoMode) _buildDemoInfo(),
                                 ],
                               ),
                             ),
@@ -275,23 +382,25 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader() {
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final primaryGradient = theme['primaryGradient'] as List<Color>;
+    final appName = _appConfig['appName'] as String;
+    
     return Column(
       children: [
         Container(
           width: 80,
           height: 80,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(40)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: primaryGradient),
+            borderRadius: const BorderRadius.all(Radius.circular(40)),
           ),
           child: const Icon(Icons.laptop_mac, color: Colors.white, size: 32),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'FreelanceHub',
-          style: TextStyle(
+        Text(
+          appName,
+          style: const TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -301,11 +410,9 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         Container(
           width: 64,
           height: 4,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(2)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: primaryGradient),
+            borderRadius: const BorderRadius.all(Radius.circular(2)),
           ),
         ),
       ],
@@ -313,6 +420,10 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildWelcomeSection() {
+    final appDescription = _appConfig['appDescription'] as String;
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final accentColor = theme['accentColor'] as Color;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -324,18 +435,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Column(
+      child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Icon(Icons.people, color: Color(0xFF33CFFF), size: 32),
-              Icon(Icons.handshake, color: Color(0xFF33CFFF), size: 32),
-              Icon(Icons.rocket_launch, color: Color(0xFF33CFFF), size: 32),
+              Icon(Icons.people, color: accentColor, size: 32),
+              Icon(Icons.handshake, color: accentColor, size: 32),
+              Icon(Icons.rocket_launch, color: accentColor, size: 32),
             ],
           ),
-          SizedBox(height: 12),
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'Welcome to Freelancer App',
             style: TextStyle(
               fontSize: 18,
@@ -343,25 +454,53 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               color: Colors.white,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            'Connect. Create. Collaborate.',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
+            appDescription,
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildDemoModeToggle() {
+    if (!(_appConfig['enableDemoMode'] ?? false)) return const SizedBox.shrink();
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Demo Mode',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch(
+          value: _isDemoMode,
+          onChanged: (value) => _toggleDemoMode(),
+          activeColor: const Color(0xFF33CFFF),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRoleSelector() {
+    final roles = _appConfig['roles'] as List<Map<String, dynamic>>;
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final primaryGradient = theme['primaryGradient'] as List<Color>;
+    final accentColor = theme['accentColor'] as Color;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.person_outline,
-              color: Color(0xFF33CFFF),
+              color: accentColor,
               size: 18,
             ),
             const SizedBox(width: 8),
@@ -377,11 +516,9 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 8),
         Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: primaryGradient),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
           ),
           padding: const EdgeInsets.all(2),
           child: Container(
@@ -404,10 +541,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               ),
               dropdownColor: const Color(0xFF2A1B5C),
               style: const TextStyle(color: Colors.white),
-              items: const [
-                DropdownMenuItem(value: 'client', child: Text('Client')),
-                DropdownMenuItem(value: 'freelancer', child: Text('Freelancer')),
-              ],
+              items: roles.map<DropdownMenuItem<String>>((role) {
+                return DropdownMenuItem<String>(
+                  value: role['id'],
+                  child: Row(
+                    children: [
+                      Icon(role['icon'], color: accentColor, size: 16),
+                      const SizedBox(width: 8),
+                      Text(role['name']),
+                    ],
+                  ),
+                );
+              }).toList(),
               onChanged: _onRoleChanged,
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -423,13 +568,16 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildUsernameField() {
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final primaryGradient = theme['primaryGradient'] as List<Color>;
+    final accentColor = theme['accentColor'] as Color;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.account_circle_outlined,
-                color: Color(0xFF33CFFF), size: 18),
+            Icon(Icons.account_circle_outlined, color: accentColor, size: 18),
             const SizedBox(width: 8),
             Text(
               'Username',
@@ -443,11 +591,9 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 8),
         Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: primaryGradient),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
           ),
           padding: const EdgeInsets.all(2),
           child: Container(
@@ -464,18 +610,10 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   horizontal: 16,
                   vertical: 12,
                 ),
-                hintText: 'Enter your username',
+                hintText: 'Enter your username or email',
                 hintStyle: TextStyle(color: Colors.grey),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your username';
-                }
-                if (value.trim().length < 2) {
-                  return 'Username must be at least 2 characters';
-                }
-                return null;
-              },
+              validator: _validateUsername,
             ),
           ),
         ),
@@ -484,12 +622,16 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildPasswordField() {
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final primaryGradient = theme['primaryGradient'] as List<Color>;
+    final accentColor = theme['accentColor'] as Color;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.lock_outline, color: Color(0xFF33CFFF), size: 18),
+            Icon(Icons.lock_outline, color: accentColor, size: 18),
             const SizedBox(width: 8),
             Text(
               'Password',
@@ -503,11 +645,9 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 8),
         Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: primaryGradient),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
           ),
           padding: const EdgeInsets.all(2),
           child: Container(
@@ -536,32 +676,23 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   onPressed: _togglePasswordVisibility,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your password';
-                }
-                return null;
-              },
+              validator: _validatePassword,
             ),
           ),
         ),
-        AnimatedOpacity(
-          opacity: _showHint ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.grey[400], size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  _hintText,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                ),
-              ],
-            ),
+        if (_isDemoMode && _selectedRole != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.grey[400], size: 14),
+              const SizedBox(width: 4),
+              Text(
+                'Demo password: ${_getRoleConfig(_selectedRole!)!['demoPassword']}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              ),
+            ],
           ),
-        ),
+        ],
       ],
     );
   }
@@ -602,17 +733,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildLoginButton() {
+    final theme = _appConfig['theme'] as Map<String, dynamic>;
+    final primaryGradient = theme['primaryGradient'] as List<Color>;
+    
     return Container(
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-        ),
+        gradient: LinearGradient(colors: primaryGradient),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8C33FF).withOpacity(0.3),
+            color: primaryGradient.first.withOpacity(0.3),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
@@ -650,14 +782,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   ),
                 ],
               )
-            : const Row(
+            : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.login, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
+                  Icon(
+                    _isDemoMode ? Icons.play_arrow : Icons.login,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    'Login',
-                    style: TextStyle(
+                    _isDemoMode ? 'Demo Login' : 'Login',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -670,6 +806,8 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildDemoInfo() {
+    final roles = _appConfig['roles'] as List<Map<String, dynamic>>;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -695,14 +833,17 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            'Client: Any username + "client123"\nFreelancer: Any username + "free123"',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[400],
-              height: 1.4,
+          ...roles.map((role) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${role['name']}: Any username + "${role['demoPassword']}"',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+                height: 1.4,
+              ),
             ),
-          ),
+          )),
         ],
       ),
     );
