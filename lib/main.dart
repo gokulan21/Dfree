@@ -12,13 +12,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Initialize Firebase
+    print('🔄 Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
+    print('✅ Firebase Backend Connected Successfully!');
+    print('📱 Project ID: ${Firebase.app().options.projectId}');
+    print('🔑 App ID: ${Firebase.app().options.appId}');
+    print('🏪 Storage Bucket: ${Firebase.app().options.storageBucket}');
   } catch (e) {
-    print('Firebase initialization error: $e');
+    print('❌ Firebase Connection Failed: $e');
   }
   
   runApp(const FreelanceHubApp());
@@ -80,6 +83,8 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder(
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
+        print('🔍 Auth state: ${snapshot.connectionState}');
+        
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xFF1E1A3C),
@@ -92,7 +97,7 @@ class AuthWrapper extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Loading FreelanceHub...',
+                    'Connecting to Firebase...',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -105,6 +110,7 @@ class AuthWrapper extends StatelessWidget {
         }
         
         if (snapshot.hasError) {
+          print('❌ Auth error: ${snapshot.error}');
           return Scaffold(
             backgroundColor: const Color(0xFF1E1A3C),
             body: Center(
@@ -118,7 +124,7 @@ class AuthWrapper extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Something went wrong',
+                    'Connection Error',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -137,14 +143,13 @@ class AuthWrapper extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      // Restart the app
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
                           builder: (context) => const FreelanceHubApp(),
                         ),
                       );
                     },
-                    child: const Text('Retry'),
+                    child: const Text('Retry Connection'),
                   ),
                 ],
               ),
@@ -153,8 +158,10 @@ class AuthWrapper extends StatelessWidget {
         }
         
         if (snapshot.hasData && snapshot.data != null) {
+          print('✅ User authenticated: ${snapshot.data?.email}');
           return const DashboardScreen();
         } else {
+          print('🔓 No user authenticated, showing login');
           return const LoginPage();
         }
       },
