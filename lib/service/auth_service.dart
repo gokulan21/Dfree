@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, unnecessary_brace_in_string_interps
+// ignore_for_file: avoid_print
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,7 +13,7 @@ class AuthService {
   // Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Demo credentials for testing
+  // Demo credentials - only username, role, and password
   final Map<String, Map<String, String>> _demoCredentials = {
     'client': {
       'hdkdj': 'client123',
@@ -27,156 +27,160 @@ class AuthService {
     },
   };
 
-  // Sign in with credentials - simplified and fixed version
+  // Sign in with credentials - improved to handle existing accounts
   Future<UserCredential?> signInWithCredentials(String username, String password, String role) async {
     try {
       print('🔄 Starting authentication process...');
-      print('Username: $username, Role: $role, Password: $password');
+      print('Username: $username, Role: $role');
 
       // Validate demo credentials first
       if (!_isValidDemoCredentials(username.trim().toLowerCase(), password, role)) {
         throw Exception('Invalid credentials. Please check your username and password.');
       }
 
-      // Create consistent demo email based on username and role
-      String cleanUsername = username.trim().toLowerCase().replaceAll(' ', '');
-      String email = '${cleanUsername}@${role.toLowerCase()}.demo';
-      
-      print('📧 Generated email: $email');
+      // Create dummy email for Firebase Auth
+      String dummyEmail = '${username.toLowerCase().trim()}@${role.toLowerCase()}.demo';
+      print('📧 Using email: $dummyEmail');
 
       try {
-        // Try to sign in first
+        // FIRST: Always try to sign in with existing account
         print('🔑 Attempting to sign in with existing account...');
         UserCredential result = await _auth.signInWithEmailAndPassword(
-          email: email,
+          email: dummyEmail,
           password: password,
         );
         
         print('✅ Sign in successful with existing account!');
-        await _updateUserDocument(result.user!, username, role);
+        
+        // Update user info in Firestore
+        await _updateOrCreateUserDocument(result.user!, username, role);
+        
         return result;
         
       } on FirebaseAuthException catch (e) {
         print('🔍 Firebase Auth Error: ${e.code} - ${e.message}');
         
         if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-          print('👤 User not found, creating new demo account...');
-          return await _createDemoUser(username, email, password, role);
+          // Account doesn't exist, create new one
+          print('👤 Account not found, creating new account...');
+          return await _createNewAccount(username, password, role, dummyEmail);
+          
         } else if (e.code == 'wrong-password') {
-          throw Exception('Incorrect password for this account.');
+          throw Exception('Incorrect password. Please check your password.');
+          
         } else if (e.code == 'invalid-email') {
           throw Exception('Invalid email format.');
+          
         } else if (e.code == 'user-disabled') {
           throw Exception('This account has been disabled.');
+          
         } else if (e.code == 'too-many-requests') {
-          throw Exception('Too many failed login attempts. Please try again later.');
+          throw Exception('Too many failed attempts. Please try again later.');
+          
         } else if (e.code == 'network-request-failed') {
           throw Exception('Network error. Please check your internet connection.');
+          
         } else {
-          // For any other error, try creating a new account
-          print('🔄 Attempting to create new account for: ${e.code}');
-          return await _createDemoUser(username, email, password, role);
+          throw Exception('Login failed: ${e.message ?? "Unknown error"}');
         }
       }
+      
     } catch (e) {
       print('❌ Authentication error: $e');
       rethrow;
     }
   }
 
-  // Validate demo credentials with improved logic
-  bool _isValidDemoCredentials(String username, String password, String role) {
-    if (username.isEmpty) {
-      print('❌ Username is empty');
-      return false;
-    }
-    
-    if (role.isEmpty || !_demoCredentials.containsKey(role)) {
-      print('❌ Invalid role: $role');
-      return false;
-    }
-    
-    // Check if username exists for this role and password matches
-    Map<String, String> roleCredentials = _demoCredentials[role]!;
-    
-    // Check exact username match or use default password for any username
-    if (roleCredentials.containsKey(username)) {
-      bool isValid = password == roleCredentials[username];
-      print(isValid ? '✅ Demo credentials validated for specific user' : '❌ Invalid password for user $username');
-      return isValid;
-    } else {
-      // Allow any username with the default role password
-      String defaultPassword = role == 'client' ? 'client123' : 'free123';
-      bool isValid = password == defaultPassword;
-      print(isValid ? '✅ Demo credentials validated with default password' : '❌ Invalid password for role $role');
-      return isValid;
-    }
-  }
-
-  // Create demo user with better error handling
-  Future<UserCredential?> _createDemoUser(String username, String email, String password, String role) async {
+  // Create new Firebase Auth account
+  Future<UserCredential?> _createNewAccount(String username, String password, String role, String email) async {
     try {
-      print('👤 Creating new demo user...');
-      print('Email: $email, Username: $username, Role: $role');
-
+      print('👤 Creating new Firebase Auth account...');
+      
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (result.user != null) {
-        print('✅ Firebase Auth user created successfully');
+        print('✅ Firebase Auth account created successfully');
         
         // Update display name
         await result.user!.updateDisplayName(username);
-        print('✅ Display name updated to: $username');
         
-        // Create user document in Firestore
-        await _createUserDocument(result.user!, username, role, email);
-        print('✅ User document created in Firestore');
+        // Create/update user document in Firestore
+        await _updateOrCreateUserDocument(result.user!, username, role);
       }
 
       return result;
+      
     } on FirebaseAuthException catch (e) {
-      print('❌ Firebase Auth Error during creation: ${e.code} - ${e.message}');
+      print('❌ Error creating Firebase Auth account: ${e.code} - ${e.message}');
       
       if (e.code == 'email-already-in-use') {
+        // Email exists, try to sign in instead
         print('📧 Email already exists, attempting to sign in...');
         try {
-          // Email exists, try to sign in instead
           UserCredential result = await _auth.signInWithEmailAndPassword(
             email: email,
             password: password,
           );
           print('✅ Signed in with existing account');
-          await _updateUserDocument(result.user!, username, role);
+          await _updateOrCreateUserDocument(result.user!, username, role);
           return result;
         } catch (signInError) {
-          throw Exception('Account exists but credentials don\'t match. Please try a different username.');
+          throw Exception('Account exists but password is incorrect. Please check your password.');
         }
       } else if (e.code == 'weak-password') {
         throw Exception('Password is too weak.');
       } else if (e.code == 'invalid-email') {
         throw Exception('Invalid email format.');
-      } else if (e.code == 'network-request-failed') {
-        throw Exception('Network error. Please check your internet connection.');
       } else {
-        throw Exception('Account creation failed: ${e.message ?? 'Unknown error'}');
+        throw Exception('Account creation failed: ${e.message ?? "Unknown error"}');
       }
     } catch (e) {
-      print('❌ General error during user creation: $e');
+      print('❌ General error creating account: $e');
       throw Exception('Account creation failed: ${e.toString()}');
     }
   }
 
-  // Create user document in Firestore
-  Future<void> _createUserDocument(User user, String username, String role, String email) async {
+  // Update or create user document in Firestore
+  Future<void> _updateOrCreateUserDocument(User user, String username, String role) async {
     try {
-      print('📄 Creating user document in Firestore...');
+      print('📄 Updating/creating user document in Firestore...');
       
+      // Check if document exists
+      DocumentSnapshot existingDoc = await _firestore.collection('users').doc(user.uid).get();
+      
+      if (existingDoc.exists) {
+        // Update existing document
+        print('🔄 Updating existing user document...');
+        await _firestore.collection('users').doc(user.uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+          'username': username,
+          'role': role,
+          'isActive': true,
+          'metadata.loginCount': FieldValue.increment(1),
+          'metadata.lastActiveDate': FieldValue.serverTimestamp(),
+        });
+        print('✅ User document updated successfully');
+      } else {
+        // Create new document
+        print('📝 Creating new user document...');
+        await _createUserDocument(user.uid, username, role);
+      }
+      
+    } catch (e) {
+      print('❌ Error updating/creating user document: $e');
+      // Don't throw here, auth was successful
+      print('⚠️ Auth successful but Firestore operation failed');
+    }
+  }
+
+  // Create user document in Firestore
+  Future<void> _createUserDocument(String userId, String username, String role) async {
+    try {
       Map<String, dynamic> userData = {
-        'uid': user.uid,
-        'email': email,
+        'uid': userId,
         'username': username,
         'role': role,
         'fullName': username,
@@ -194,7 +198,6 @@ class AuthService {
         'isActive': true,
         'accountType': role,
         'platform': 'android',
-        'isEmailVerified': false,
         'preferences': {
           'notifications': true,
           'darkMode': true,
@@ -202,46 +205,46 @@ class AuthService {
         },
         'metadata': {
           'loginCount': 1,
-          'lastActiveDate': FieldValue.serverTimestamp(),
           'deviceInfo': 'Android Demo',
+          'lastActiveDate': FieldValue.serverTimestamp(),
         }
       };
 
-      await _firestore.collection('users').doc(user.uid).set(userData);
+      await _firestore.collection('users').doc(userId).set(userData);
       print('✅ User document created successfully in Firestore');
       
     } catch (e) {
       print('❌ Firestore error: $e');
-      // Don't throw here as auth was successful, just log the error
-      print('⚠️ Auth successful but user document creation failed - this is not critical');
+      print('⚠️ Auth successful but user document creation failed');
     }
   }
 
-  // Update existing user document
-  Future<void> _updateUserDocument(User user, String username, String role) async {
-    try {
-      print('🔄 Updating existing user document...');
-      
-      Map<String, dynamic> updateData = {
-        'lastLogin': FieldValue.serverTimestamp(),
-        'username': username, // Update username in case it changed
-        'role': role, // Update role in case it changed
-        'isActive': true,
-        'metadata.loginCount': FieldValue.increment(1),
-        'metadata.lastActiveDate': FieldValue.serverTimestamp(),
-      };
-
-      await _firestore.collection('users').doc(user.uid).update(updateData);
-      print('✅ User document updated successfully');
-      
-    } catch (e) {
-      print('⚠️ Could not update user document: $e');
-      // Try to create the document if it doesn't exist
-      try {
-        await _createUserDocument(user, username, role, user.email ?? '');
-      } catch (createError) {
-        print('⚠️ Could not create user document either: $createError');
-      }
+  // Validate demo credentials
+  bool _isValidDemoCredentials(String username, String password, String role) {
+    if (username.isEmpty) {
+      print('❌ Username is empty');
+      return false;
+    }
+    
+    if (role.isEmpty || !_demoCredentials.containsKey(role)) {
+      print('❌ Invalid role: $role');
+      return false;
+    }
+    
+    // Check if username exists for this role and password matches
+    Map<String, String> roleCredentials = _demoCredentials[role]!;
+    
+    // Check exact username match
+    if (roleCredentials.containsKey(username)) {
+      bool isValid = password == roleCredentials[username];
+      print(isValid ? '✅ Demo credentials validated for specific user' : '❌ Invalid password for user $username');
+      return isValid;
+    } else {
+      // Allow any username with the default role password
+      String defaultPassword = role == 'client' ? 'client123' : 'free123';
+      bool isValid = password == defaultPassword;
+      print(isValid ? '✅ Demo credentials validated with default password' : '❌ Invalid password for role $role');
+      return isValid;
     }
   }
 
@@ -268,14 +271,45 @@ class AuthService {
     }
   }
 
-  // Reset password
-  Future<void> resetPassword(String email) async {
+  // Get user role from Firestore
+  Future<String?> getUserRole() async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
-      print('✅ Password reset email sent to: $email');
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+          return data?['role'] as String?;
+        }
+      }
+      return null;
     } catch (e) {
-      print('❌ Reset password error: $e');
-      throw Exception('Failed to send reset email: ${e.toString()}');
+      print('❌ Error getting user role: $e');
+      return null;
+    }
+  }
+
+  // Get current user info
+  Future<Map<String, dynamic>?> getCurrentUserInfo() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+          return {
+            'uid': user.uid,
+            'username': data?['username'],
+            'role': data?['role'],
+            'displayName': user.displayName,
+            'email': user.email, // This will be the dummy email
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting current user info: $e');
+      return null;
     }
   }
 
@@ -298,45 +332,41 @@ class AuthService {
     }
   }
 
-  // Get user role
-  Future<String?> getUserRole() async {
+  // Clean up demo accounts (for development)
+  Future<void> cleanUpDemoAccounts() async {
     try {
-      User? user = _auth.currentUser;
-      if (user != null) {
-        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
-          return data?['role'] as String?;
+      print('🧹 Cleaning up demo accounts...');
+      
+      // Sign out current user first
+      await signOut();
+      
+      List<String> demoEmails = [
+        'hdkdj@client.demo',
+        'gokul@freelancer.demo',
+        'client@client.demo',
+        'freelancer@freelancer.demo',
+      ];
+      
+      for (String email in demoEmails) {
+        try {
+          // Delete from Firestore
+          QuerySnapshot users = await _firestore
+              .collection('users')
+              .where('username', isEqualTo: email.split('@')[0])
+              .get();
+              
+          for (DocumentSnapshot doc in users.docs) {
+            await doc.reference.delete();
+            print('🗑️ Deleted Firestore document for $email');
+          }
+        } catch (e) {
+          print('⚠️ Could not delete Firestore document for $email: $e');
         }
       }
-      return null;
+      
+      print('✅ Demo account cleanup completed');
     } catch (e) {
-      print('❌ Error getting user role: $e');
-      return null;
-    }
-  }
-
-  // Check if user is authenticated and get role
-  Future<Map<String, dynamic>?> getCurrentUserInfo() async {
-    try {
-      User? user = _auth.currentUser;
-      if (user != null) {
-        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
-          return {
-            'uid': user.uid,
-            'email': user.email,
-            'username': data?['username'],
-            'role': data?['role'],
-            'displayName': user.displayName,
-          };
-        }
-      }
-      return null;
-    } catch (e) {
-      print('❌ Error getting current user info: $e');
-      return null;
+      print('❌ Error cleaning demo accounts: $e');
     }
   }
 }
