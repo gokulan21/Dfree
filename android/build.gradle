@@ -25,6 +25,18 @@ subprojects {
 
 subprojects {
     project.evaluationDependsOn(':app')
+    
+    // Configure Java 17 for all subprojects
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

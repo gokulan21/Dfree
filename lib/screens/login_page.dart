@@ -1,80 +1,35 @@
-// ignore_for_file: use_build_context_synchronously, unused_import
+// ignore_for_file: avoid_print
 
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
-import 'package:freelance_hub/freelan/home_page.dart';
-import 'package:freelance_hub/service/auth_service.dart';
+import '../service/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  LoginPageState createState() => LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  String? _selectedRole;
-  bool _passwordVisible = false;
-  bool _showHint = false;
-  String _hintText = '';
+  
+  String _selectedRole = 'client';
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
-  late AnimationController _pulseController;
-
-  final Map<String, String> _correctPasswords = {
-    'client': 'client123',
-    'freelancer': 'free123',
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-  }
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _onRoleChanged(String? value) {
-    setState(() {
-      _selectedRole = value;
-      if (value == 'client') {
-        _hintText = 'Client password: client123';
-        _showHint = true;
-      } else if (value == 'freelancer') {
-        _hintText = 'Freelancer password: free123';
-        _showHint = true;
-      } else {
-        _showHint = false;
-      }
-    });
-  }
-
-  void _togglePasswordVisibility() {
-    setState(() {
-      _passwordVisible = !_passwordVisible;
-    });
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_selectedRole == null || _selectedRole!.isEmpty) {
-      _showSnackBar('Please select your role');
       return;
     }
 
@@ -83,55 +38,18 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     });
 
     try {
-      final passwordText = _passwordController.text.trim();
-      final usernameText = _usernameController.text.trim();
-      final expectedPassword = _correctPasswords[_selectedRole!];
+      final userCredential = await _authService.signInWithCredentials(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+        _selectedRole,
+      );
 
-      if (passwordText == expectedPassword) {
-        // Use Firebase authentication
-        try {
-          await AuthService().signInWithCredentials(
-            usernameText,
-            passwordText,
-            _selectedRole!,
-          );
-
-          _showSnackBar(
-            'Welcome, $usernameText! Login successful.',
-            isSuccess: true,
-          );
-
-          // Navigate to appropriate dashboard based on role
-          if (mounted) {
-            if (_selectedRole == 'client') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                    builder: (context) => const DashboardScreen()),
-              );
-            } else if (_selectedRole == 'freelancer') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => HomePage()),
-              );
-            }
-          }
-        } catch (authError) {
-          if (mounted) {
-            _showSnackBar('Authentication failed: ${authError.toString()}');
-          }
-        }
-      } else {
-        if (mounted) {
-          _pulseController.forward().then((_) {
-            if (mounted) {
-              _pulseController.reverse();
-            }
-          });
-          _showSnackBar('Incorrect password. Please try again.');
-        }
+      if (userCredential != null && mounted) {
+        Navigator.of(context).pushReplacementNamed('/dashboard');
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Login failed: ${e.toString()}');
+        _showErrorDialog('Login Failed', e.toString());
       }
     } finally {
       if (mounted) {
@@ -142,443 +60,290 @@ class LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
-  void _showSnackBar(String message, {bool isSuccess = false}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: isSuccess ? Colors.green : Colors.red,
-          behavior: SnackBarBehavior.floating,
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1B1737),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white),
         ),
-      );
-    }
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: Color(0xFF33CFFF)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1B1737), Color(0xFF1E1A3C), Color(0xFF2A1B5C)],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: SingleChildScrollView(
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: 1.0 + (_pulseController.value * 0.05),
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 400),
-                        child: Card(
-                          elevation: 25,
-                          color: Colors.grey[900]!.withOpacity(0.8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildHeader(),
-                                  const SizedBox(height: 32),
-                                  _buildWelcomeSection(),
-                                  const SizedBox(height: 32),
-                                  _buildRoleSelector(),
-                                  const SizedBox(height: 24),
-                                  _buildUsernameField(),
-                                  const SizedBox(height: 24),
-                                  _buildPasswordField(),
-                                  const SizedBox(height: 32),
-                                  _buildLoginButton(),
-                                  const SizedBox(height: 24),
-                                  _buildHelpLink(),
-                                ],
-                              ),
+      backgroundColor: const Color(0xFF1E1A3C),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Logo/Title Section
+                  const Icon(
+                    Icons.work_outline,
+                    size: 80,
+                    color: Color(0xFF33CFFF),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'FreelanceHub',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Manage your freelance projects',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+
+                  // Role Selection
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1737),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            'Login as',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(40)),
-          ),
-          child: const Icon(Icons.laptop_mac, color: Colors.white, size: 32),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'FreelanceHub',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: 64,
-          height: 4,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(2)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWelcomeSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF6B21A8).withOpacity(0.8),
-            const Color(0xFF1E3A8A).withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Icon(Icons.people, color: Color(0xFF33CFFF), size: 32),
-              Icon(Icons.handshake, color: Color(0xFF33CFFF), size: 32),
-              Icon(Icons.rocket_launch, color: Color(0xFF33CFFF), size: 32),
-            ],
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Welcome to Freelancer App',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Connect. Create. Collaborate.',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoleSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.person_outline,
-              color: Color(0xFF33CFFF),
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Select Your Role',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[300],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-          padding: const EdgeInsets.all(2),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1A3C),
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-            child: DropdownButtonFormField<String>(
-              value: _selectedRole,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              hint: const Text(
-                'Choose your role...',
-                style: TextStyle(color: Colors.grey),
-              ),
-              dropdownColor: const Color(0xFF424242),
-              style: const TextStyle(color: Colors.white),
-              items: const [
-                DropdownMenuItem(value: 'client', child: Text('Client')),
-                DropdownMenuItem(
-                  value: 'freelancer',
-                  child: Text('Freelancer'),
-                ),
-              ],
-              onChanged: _onRoleChanged,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please select your role';
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUsernameField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.account_circle_outlined,
-                color: Color(0xFF33CFFF), size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'Username',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[300],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-          padding: const EdgeInsets.all(2),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1A3C),
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-            child: TextFormField(
-              controller: _usernameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                hintText: 'Enter your username',
-                hintStyle: TextStyle(color: Colors.grey),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your username';
-                }
-                if (value.trim().length < 3) {
-                  return 'Username must be at least 3 characters';
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.lock_outline, color: Color(0xFF33CFFF), size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'Password',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[300],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C33FF), Color(0xFF33CFFF)],
-            ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-          padding: const EdgeInsets.all(2),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1A3C),
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-            child: TextFormField(
-              controller: _passwordController,
-              obscureText: !_passwordVisible,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                hintText: 'Enter your password',
-                hintStyle: const TextStyle(color: Colors.grey),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.grey,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text(
+                                  'Client',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  'Hire freelancers',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                value: 'client',
+                                groupValue: _selectedRole,
+                                activeColor: const Color(0xFF33CFFF),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedRole = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text(
+                                  'Freelancer',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  'Find projects',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                value: 'freelancer',
+                                groupValue: _selectedRole,
+                                activeColor: const Color(0xFF33CFFF),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedRole = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: _togglePasswordVisibility,
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your password';
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-        AnimatedOpacity(
-          opacity: _showHint ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.grey[400], size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  _hintText,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+                  const SizedBox(height: 24),
 
-  Widget _buildLoginButton() {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B1737), Color(0xFF1E1A3C), Color(0xFF2A1B5C)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF1EC0).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: const Color.fromARGB(0, 5, 5, 5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: _isLoading
-            ? const CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.login, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text(
-                    'Login',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  // Username Field
+                  TextFormField(
+                    controller: _usernameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Username',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      hintText: 'Enter your username',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.person, color: Color(0xFF33CFFF)),
+                      filled: true,
+                      fillColor: const Color(0xFF1B1737),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF33CFFF)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your username';
+                      }
+                      if (value.trim().length < 3) {
+                        return 'Username must be at least 3 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password Field
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      hintText: 'Enter your password',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.lock, color: Color(0xFF33CFFF)),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF1B1737),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF33CFFF)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      if (value.trim().length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Login Button
+                  SizedBox(
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF33CFFF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Demo Info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1737).withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Text(
+                          'Demo App - Any username/password works',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF33CFFF),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Try: username "demo" with password "123456"',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildHelpLink() {
-    return GestureDetector(
-      onTap: () {
-        _showSnackBar('Help feature coming soon!');
-      },
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.help_outline, color: Color(0xFF33CFFF), size: 16),
-          SizedBox(width: 4),
-          Text(
-            'Need help?',
-            style: TextStyle(fontSize: 14, color: Color(0xFF33CFFF)),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
