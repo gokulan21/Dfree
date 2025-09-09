@@ -152,19 +152,6 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
                 fontSize: 14, // Reduced font size
               ),
             ),
-            const SizedBox(height: 16), // Reduced spacing
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to available projects
-              },
-              icon: const Icon(Icons.search, size: 18),
-              label: const Text('Browse Projects'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.accentPink,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // Reduced padding
-              ),
-            ),
           ],
         ),
       ),

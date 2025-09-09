@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_brace_in_string_interps
+
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -130,6 +132,7 @@ extension StringExtension on String {
   }
 }
 
+// Add this to your constants.dart file in the DateTimeExtension
 extension DateTimeExtension on DateTime {
   String get timeAgo {
     final now = DateTime.now();
@@ -158,23 +161,15 @@ extension DateTimeExtension on DateTime {
     return '${months[month - 1]} $day, $year';
   }
   
+  String get formatDateTime {
+    return '${formatDate} at ${formatTime}';
+  }
+  
   String get formatTime {
     final hour = this.hour;
     final minute = this.minute;
     final period = hour >= 12 ? 'PM' : 'AM';
     final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     return '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
-  }
-}
-
-extension DoubleExtension on double {
-  String get formatCurrency {
-    if (this >= 1000000) {
-      return '\$${(this / 1000000).toStringAsFixed(1)}M';
-    } else if (this >= 1000) {
-      return '\$${(this / 1000).toStringAsFixed(1)}K';
-    } else {
-      return '\$${toStringAsFixed(0)}';
-    }
   }
 }

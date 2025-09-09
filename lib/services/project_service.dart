@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:freelance_hub/services/notification_service.dart';
 import '../models/project_model.dart';
 
 class ProjectService {
@@ -248,4 +249,68 @@ class ProjectService {
             .map((doc) => ProjectModel.fromFirestore(doc))
             .toList());
   }
+  // Add these methods to your existing ProjectService class
+
+// Update project progress with notification
+Future<void> updateProjectProgressWithNotification({
+  required String projectId,
+  required int progress,
+  required String freelancerName,
+}) async {
+  try {
+    // Get project details first
+    final projectDoc = await _firestore.collection('projects').doc(projectId).get();
+    if (!projectDoc.exists) throw Exception('Project not found');
+
+    final project = ProjectModel.fromFirestore(projectDoc);
+    
+    Map<String, dynamic> updateData = {
+      'progress': progress,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    // If progress is 100%, mark as completed
+    if (progress >= 100) {
+      updateData['status'] = ProjectStatus.completed.name;
+      updateData['completedDate'] = FieldValue.serverTimestamp();
+    }
+
+    // Update project in Firestore
+    await _firestore.collection('projects').doc(projectId).update(updateData);
+
+    // Send notifications
+    final notificationService = NotificationService();
+    
+    if (progress >= 100) {
+      // Send completion notification
+      await notificationService.sendProjectCompletionNotification(
+        clientId: project.clientId,
+        projectId: projectId,
+        projectTitle: project.title,
+        freelancerName: freelancerName,
+      );
+      
+      // Update freelancer's completed projects count
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _firestore.collection('users').doc(currentUser.uid).update({
+          'completedProjects': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } else {
+      // Send progress update notification
+      await notificationService.sendProgressUpdateNotification(
+        clientId: project.clientId,
+        projectId: projectId,
+        projectTitle: project.title,
+        freelancerName: freelancerName,
+        progress: progress,
+      );
+    }
+  } catch (e) {
+    throw Exception('Failed to update progress: ${e.toString()}');
+  }
+}
+
 }

@@ -1,17 +1,21 @@
+// Update your existing project_detail_dialog.dart
 import 'package:flutter/material.dart';
 import '../models/project_model.dart';
 import '../utils/constants.dart';
+import 'progress_update_dialog.dart';
 
 class ProjectDetailDialog extends StatelessWidget {
   final ProjectModel project;
   final bool isFreelancer;
   final VoidCallback? onApply;
+  final VoidCallback? onProgressUpdated;
 
   const ProjectDetailDialog({
     super.key,
     required this.project,
     this.isFreelancer = false,
     this.onApply,
+    this.onProgressUpdated,
   });
 
   @override
@@ -122,51 +126,127 @@ class ProjectDetailDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Project Details
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDetailItem('Budget', '\$${project.budget.toStringAsFixed(0)}'),
+                    // Progress Section (Enhanced for freelancers)
+                    if (isFreelancer && project.status == ProjectStatus.inProgress) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Project Progress',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (project.progress < 100)
+                            TextButton.icon(
+                              onPressed: () => _showProgressUpdateDialog(context),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: const Text('Update'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.accentCyan,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Progress Bar with percentage
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSecondary,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        Expanded(
-                          child: _buildDetailItem('Status', project.statusDisplayName),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Current Progress',
+                                  style: const TextStyle(
+                                    color: AppColors.textGrey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '${project.progress}%',
+                                  style: TextStyle(
+                                    color: project.progress == 100 
+                                        ? AppColors.successGreen 
+                                        : AppColors.accentCyan,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: project.progress / 100,
+                                backgroundColor: AppColors.borderColor,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  project.progress == 100 
+                                      ? AppColors.successGreen 
+                                      : AppColors.accentCyan,
+                                ),
+                                minHeight: 8,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            // Progress milestones
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [25, 50, 75, 100].map((milestone) {
+                                final isReached = project.progress >= milestone;
+                                final isCurrent = project.progress < milestone && 
+                                    (milestone == 25 || project.progress >= milestone - 25);
+                                
+                                return Column(
+                                  children: [
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: isReached 
+                                            ? (milestone == 100 ? AppColors.successGreen : AppColors.accentCyan)
+                                            : (isCurrent ? AppColors.warningYellow : AppColors.borderColor),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isReached 
+                                            ? Icons.check 
+                                            : (isCurrent ? Icons.radio_button_unchecked : Icons.circle),
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$milestone%',
+                                      style: TextStyle(
+                                        color: isReached 
+                                            ? Colors.white 
+                                            : AppColors.textGrey,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDetailItem('Progress', '${project.progress}%'),
-                        ),
-                        Expanded(
-                          child: _buildDetailItem('Created', _formatDate(project.createdAt)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Updated date if available
-                    // ignore: unnecessary_null_comparison
-                    if (project.updatedAt != null) ...[
-                      _buildDetailItem('Last Updated', _formatDate(project.updatedAt)),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Client and Freelancer info if available
-                    if (project.clientId.isNotEmpty) ...[
-                      _buildDetailItem('Client ID', project.clientId),
-                      const SizedBox(height: 16),
-                    ],
-
-                    if (project.freelancerId != null && project.freelancerId!.isNotEmpty) ...[
-                      _buildDetailItem('Freelancer ID', project.freelancerId!),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Progress Bar (if project is in progress)
-                    if (project.status == ProjectStatus.inProgress) ...[
+                      ),
+                      const SizedBox(height: 24),
+                    ] else if (project.progress > 0) ...[
+                      // Regular progress display for clients
                       const Text(
                         'Progress',
                         style: TextStyle(
@@ -190,6 +270,65 @@ class ProjectDetailDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
+                    ],
+
+                    // Project Details
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDetailItem('Budget', '\$${project.budget.toStringAsFixed(0)}'),
+                        ),
+                        Expanded(
+                          child: _buildDetailItem('Status', project.statusDisplayName),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDetailItem('Created', _formatDate(project.createdAt)),
+                        ),
+                        Expanded(
+                          child: _buildDetailItem('Due Date', _formatDate(project.dueDate)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Skills if available
+                    if (project.skills.isNotEmpty) ...[
+                      const Text(
+                        'Required Skills',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: project.skills.map((skill) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentCyan.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              skill,
+                              style: const TextStyle(
+                                color: AppColors.accentCyan,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
                     ],
 
                     // Payment info if available
@@ -263,6 +402,16 @@ class ProjectDetailDialog extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showProgressUpdateDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ProgressUpdateDialog(
+        project: project,
+        onProgressUpdated: onProgressUpdated,
       ),
     );
   }

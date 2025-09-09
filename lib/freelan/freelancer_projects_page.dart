@@ -45,9 +45,10 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
       if (currentUser != null) {
         // Cancel previous subscription if exists
         _projectsSubscription?.cancel();
-        
+
         // Listen to projects stream
-        _projectsSubscription = _projectService.getFreelancerProjects(currentUser.uid).listen(
+        _projectsSubscription =
+            _projectService.getFreelancerProjects(currentUser.uid).listen(
           (projects) {
             if (mounted) {
               setState(() {
@@ -125,7 +126,9 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
     }
 
     if (filterStatus != null) {
-      return _myProjects.where((project) => project.status == filterStatus).toList();
+      return _myProjects
+          .where((project) => project.status == filterStatus)
+          .toList();
     }
 
     return _myProjects;
@@ -244,14 +247,22 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
   Widget _buildProjectStats() {
     // Use filtered projects based on selected filter
     final filteredProjects = _filteredMyProjects;
-    
+
     // Calculate stats based on filtered projects
     final totalProjects = filteredProjects.length;
-    final activeProjects = filteredProjects.where((p) => p.status == ProjectStatus.inProgress).length;
-    final completedProjects = filteredProjects.where((p) => p.status == ProjectStatus.completed).length;
-    final pendingProjects = filteredProjects.where((p) => p.status == ProjectStatus.pending).length;
-    final cancelledProjects = filteredProjects.where((p) => p.status == ProjectStatus.cancelled).length;
-    final onHoldProjects = filteredProjects.where((p) => p.status == ProjectStatus.onHold).length;
+    final activeProjects = filteredProjects
+        .where((p) => p.status == ProjectStatus.inProgress)
+        .length;
+    final completedProjects = filteredProjects
+        .where((p) => p.status == ProjectStatus.completed)
+        .length;
+    final pendingProjects =
+        filteredProjects.where((p) => p.status == ProjectStatus.pending).length;
+    final cancelledProjects = filteredProjects
+        .where((p) => p.status == ProjectStatus.cancelled)
+        .length;
+    final onHoldProjects =
+        filteredProjects.where((p) => p.status == ProjectStatus.onHold).length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -261,13 +272,14 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
 
         // Show different stats based on selected filter
         List<Widget> statCards = [];
-        
+
         if (_selectedFilter == 'all') {
           // Show all stats when "All" is selected
           statCards = [
             _buildStatCard('Total', totalProjects, AppColors.accentCyan),
             _buildStatCard('Active', activeProjects, AppColors.warningYellow),
-            _buildStatCard('Completed', completedProjects, AppColors.successGreen),
+            _buildStatCard(
+                'Completed', completedProjects, AppColors.successGreen),
             _buildStatCard('Pending', pendingProjects, AppColors.textGrey),
           ];
         } else {
@@ -290,7 +302,7 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
               filterLabel = 'On Hold';
               break;
           }
-          
+
           statCards = [
             _buildStatCard(filterLabel, totalProjects, AppColors.accentCyan),
           ];
@@ -479,6 +491,10 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
       builder: (context) => ProjectDetailDialog(
         project: project,
         isFreelancer: true,
+        onProgressUpdated: () {
+          // Refresh the projects list when progress is updated
+          _loadProjects();
+        },
       ),
     );
   }

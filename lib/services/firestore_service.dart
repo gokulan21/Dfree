@@ -213,4 +213,91 @@ class FirestoreService {
       throw Exception('Batch update failed: ${e.toString()}');
     }
   }
+  // Add this method to your FirestoreService class
+String? getCurrentUserId() {
+  return _auth.currentUser?.uid;
+}
+// Add these methods to your FirestoreService class
+
+// Assign freelancer to project
+Future<void> assignFreelancerToProject({
+  required String projectId,
+  required String freelancerId,
+  required String freelancerName,
+}) async {
+  try {
+    final batch = _firestore.batch();
+    
+    // Update project with freelancer assignment
+    final projectRef = _firestore.collection('projects').doc(projectId);
+    batch.update(projectRef, {
+      'freelancerId': freelancerId,
+      'freelancerName': freelancerName,
+      'status': ProjectStatus.inProgress.name,
+      'assignedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    
+    // Update freelancer's project count
+    final freelancerRef = _firestore.collection('users').doc(freelancerId);
+    batch.update(freelancerRef, {
+      'totalProjects': FieldValue.increment(1),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    
+    // Create assignment record for tracking
+    final assignmentRef = _firestore.collection('assignments').doc();
+    batch.set(assignmentRef, {
+      'projectId': projectId,
+      'freelancerId': freelancerId,
+      'freelancerName': freelancerName,
+      'assignedAt': FieldValue.serverTimestamp(),
+      'status': 'active',
+    });
+    
+    await batch.commit();
+  } catch (e) {
+    throw Exception('Failed to assign freelancer: ${e.toString()}');
+  }
+}
+
+// Get available projects for assignment (not assigned to any freelancer)
+Stream<List<ProjectModel>> getAvailableClientProjects(String clientId) {
+  return _firestore
+      .collection('projects')
+      .where('clientId', isEqualTo: clientId)
+      .where('isActive', isEqualTo: true)
+      .where('freelancerId', isNull: true) // Only unassigned projects
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => ProjectModel.fromFirestore(doc))
+          .where((project) => 
+            project.status == ProjectStatus.pending || 
+            project.status == ProjectStatus.onHold)
+          .toList());
+}
+
+// Send message to freelancer (placeholder for future implementation)
+Future<void> sendMessageToFreelancer({
+  required String freelancerId,
+  required String clientId,
+  required String message,
+}) async {
+  try {
+    // Create conversation if it doesn't exist
+    final conversationId = '${clientId}_$freelancerId';
+    
+    await _firestore.collection('messages').add({
+      'conversationId': conversationId,
+      'senderId': clientId,
+      'receiverId': freelancerId,
+      'message': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  } catch (e) {
+    throw Exception('Failed to send message: ${e.toString()}');
+  }
+}
+
 }
