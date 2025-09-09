@@ -1,4 +1,7 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
@@ -386,6 +389,7 @@ class _FreelancerClientsPageState extends State<FreelancerClientsPage> {
     final activeProjects = projects.where((p) => p.status == ProjectStatus.inProgress).length;
     final totalEarnings = projects
         .where((p) => p.status == ProjectStatus.completed)
+        // ignore: avoid_types_as_parameter_names
         .fold(0.0, (sum, p) => sum + (p.paidAmount ?? 0));
 
     return Column(

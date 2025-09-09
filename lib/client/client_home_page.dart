@@ -1,3 +1,5 @@
+// ignore_for_file: strict_top_level_inference
+
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
@@ -38,26 +40,29 @@ class _ClientHomePageState extends State<ClientHomePage> {
         // Load dashboard metrics
         final metrics = await _firestoreService.getClientDashboardMetrics(currentUser.uid);
         
-        // Load recent projects
-        final projectsStream = _firestoreService.getClientProjects(currentUser.uid);
+        // Load recent projects - using getUserProjects and filtering by clientId
+        final projectsStream = _firestoreService.getUserProjects(currentUser.uid);
         final projectsSnapshot = await projectsStream.first;
+        final clientProjects = projectsSnapshot.toList();
         
         // Load top freelancers
         final freelancersStream = _firestoreService.getFreelancers();
         final freelancersSnapshot = await freelancersStream.first;
         
-        setState(() {
-          _dashboardMetrics = metrics;
-          _recentProjects = projectsSnapshot.take(5).toList();
-          _topFreelancers = freelancersSnapshot.take(4).toList();
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _dashboardMetrics = metrics;
+            _recentProjects = clientProjects.take(5).toList();
+            _topFreelancers = freelancersSnapshot.take(4).toList();
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading dashboard: ${e.toString()}'),
@@ -365,3 +370,4 @@ class _ClientHomePageState extends State<ClientHomePage> {
     );
   }
 }
+

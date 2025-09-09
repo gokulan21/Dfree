@@ -97,7 +97,7 @@ class FreelancerCard extends StatelessWidget {
           
           // Bio
           Text(
-            freelancer.bio,
+            freelancer.bio ?? '',
             style: const TextStyle(
               color: AppColors.textGrey,
               fontSize: 14,

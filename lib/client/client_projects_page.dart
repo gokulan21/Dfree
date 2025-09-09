@@ -34,17 +34,19 @@ class _ClientProjectsPageState extends State<ClientProjectsPage> {
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         _projectService.getClientProjects(currentUser.uid).listen((projects) {
-          setState(() {
-            _projects = projects;
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _projects = projects;
+              _isLoading = false;
+            });
+          }
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading projects: ${e.toString()}'),
@@ -448,7 +450,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                         items: Priority.values.map((priority) {
                           return DropdownMenuItem(
                             value: priority,
-                            child: Text(priority.priorityDisplayName),
+                            child: Text(_getPriorityDisplayName(priority)),
                           );
                         }).toList(),
                         onChanged: (priority) {
@@ -532,16 +534,31 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
     );
   }
 
+  String _getPriorityDisplayName(Priority priority) {
+    switch (priority) {
+      case Priority.low:
+        return 'Low';
+      case Priority.medium:
+        return 'Medium';
+      case Priority.high:
+        return 'High';
+      case Priority.urgent:
+        return 'Urgent';
+    }
+  }
+
   Future<void> _createProject() async {
     if (!_formKey.currentState!.validate()) return;
     
     if (_selectedSkills.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one required skill'),
-          backgroundColor: AppColors.dangerRed,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one required skill'),
+            backgroundColor: AppColors.dangerRed,
+          ),
+        );
+      }
       return;
     }
 
@@ -658,7 +675,7 @@ class ProjectDetailDialog extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            project.statusDisplayName,
+                            _getStatusDisplayName(project.status),
                             style: TextStyle(
                               color: _getStatusColor(project.status),
                               fontWeight: FontWeight.w600,
@@ -673,7 +690,7 @@ class ProjectDetailDialog extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            project.priorityDisplayName,
+                            _getPriorityDisplayName(project.priority),
                             style: TextStyle(
                               color: _getPriorityColor(project.priority),
                               fontWeight: FontWeight.w600,
@@ -829,6 +846,34 @@ class ProjectDetailDialog extends StatelessWidget {
     );
   }
 
+  String _getStatusDisplayName(ProjectStatus status) {
+    switch (status) {
+      case ProjectStatus.pending:
+        return 'Pending';
+      case ProjectStatus.inProgress:
+        return 'In Progress';
+      case ProjectStatus.completed:
+        return 'Completed';
+      case ProjectStatus.cancelled:
+        return 'Cancelled';
+      case ProjectStatus.onHold:
+        return 'On Hold';
+    }
+  }
+
+  String _getPriorityDisplayName(Priority priority) {
+    switch (priority) {
+      case Priority.low:
+        return 'Low';
+      case Priority.medium:
+        return 'Medium';
+      case Priority.high:
+        return 'High';
+      case Priority.urgent:
+        return 'Urgent';
+    }
+  }
+
   Color _getStatusColor(ProjectStatus status) {
     switch (status) {
       case ProjectStatus.pending:
@@ -857,4 +902,3 @@ class ProjectDetailDialog extends StatelessWidget {
     }
   }
 }
-

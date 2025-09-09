@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/constants.dart';
-import '../auth/login_page.dart';
 
 class FreelancerSettingsPage extends StatefulWidget {
   const FreelancerSettingsPage({super.key});
@@ -16,7 +14,6 @@ class FreelancerSettingsPage extends StatefulWidget {
 
 class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
   final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
   
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -64,7 +61,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
           _nameController.text = userData.name;
           _emailController.text = userData.email;
           _phoneController.text = userData.phone ?? '';
-          _bioController.text = userData.bio;
+          _bioController.text = userData.bio ?? '';
           _hourlyRateController.text = userData.hourlyRate.toString();
           _skills = List.from(userData.skills);
           
@@ -175,8 +172,9 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
       try {
         await _authService.signOut();
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginPage()),
+          // Navigate to login page - you'll need to update this path
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
             (route) => false,
           );
         }
@@ -585,6 +583,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
               onTap: () {
                 // Show change password dialog
+                _showChangePasswordDialog();
               },
             ),
             
@@ -604,6 +603,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
               onTap: () {
                 // Export data functionality
+                _showExportDataDialog();
               },
             ),
             
@@ -640,6 +640,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
               onTap: () {
                 // Show delete account confirmation
+                _showDeleteAccountDialog();
               },
             ),
           ],
@@ -662,5 +663,84 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
     setState(() {
       _skills.remove(skill);
     });
+  }
+
+  void _showChangePasswordDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardColor,
+        title: const Text(
+          'Change Password',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This feature will be implemented soon.',
+          style: TextStyle(color: AppColors.textGrey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExportDataDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardColor,
+        title: const Text(
+          'Export Data',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This feature will be implemented soon.',
+          style: TextStyle(color: AppColors.textGrey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardColor,
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This action cannot be undone. Are you sure you want to delete your account?',
+          style: TextStyle(color: AppColors.textGrey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Implement delete account functionality
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.dangerRed,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -75,7 +75,7 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((freelancer) {
         return freelancer.name.toLowerCase().contains(searchQuery) ||
-               freelancer.bio.toLowerCase().contains(searchQuery) ||
+               (freelancer.bio?.toLowerCase().contains(searchQuery) ?? false) ||
                freelancer.skills.any((skill) => skill.toLowerCase().contains(searchQuery));
       }).toList();
     }
@@ -513,7 +513,7 @@ class FreelancerDetailDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      freelancer.bio,
+                      freelancer.bio ?? 'No bio available',
                       style: const TextStyle(
                         color: AppColors.textGrey,
                         fontSize: 16,

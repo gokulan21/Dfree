@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/project_model.dart';
@@ -5,8 +7,6 @@ import '../models/project_model.dart';
 class ProjectService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  String get _currentUserId => _auth.currentUser?.uid ?? '';
 
   // Create project
   Future<String> createProject(ProjectModel project) async {

@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
@@ -5,7 +7,7 @@ import '../../models/user_model.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/constants.dart';
-import '../auth/login_page.dart';
+import '../../screens/auth/login_page.dart';
 
 class ClientSettingsPage extends StatefulWidget {
   const ClientSettingsPage({super.key});
@@ -16,7 +18,6 @@ class ClientSettingsPage extends StatefulWidget {
 
 class _ClientSettingsPageState extends State<ClientSettingsPage> {
   final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
   
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -53,14 +54,14 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
   Future<void> _loadUserData() async {
     try {
       final userData = await _authService.getCurrentUserData();
-      if (userData != null) {
+      if (userData != null && mounted) {
         setState(() {
           _currentUser = userData;
           _nameController.text = userData.name;
           _emailController.text = userData.email;
           _phoneController.text = userData.phone ?? '';
           _companyController.text = userData.company ?? '';
-          _bioController.text = userData.bio;
+          _bioController.text = userData.bio ?? '';
           
           // Load notification preferences
           _emailNotifications = userData.preferences['emailNotifications'] ?? true;
@@ -72,10 +73,10 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading user data: ${e.toString()}'),
@@ -162,7 +163,7 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       try {
         await _authService.signOut();
         if (mounted) {

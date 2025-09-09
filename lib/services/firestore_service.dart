@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
@@ -6,8 +8,6 @@ import '../models/project_model.dart';
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  String get _currentUserId => _auth.currentUser?.uid ?? '';
 
   // User operations
   Future<UserModel?> getUser(String userId) async {
@@ -52,6 +52,42 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => UserModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Get user projects (for both clients and freelancers)
+  Stream<List<ProjectModel>> getUserProjects(String userId) {
+    return _firestore
+        .collection('projects')
+        .where('clientId', isEqualTo: userId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProjectModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Get client projects (alternative method name for clarity)
+  Stream<List<ProjectModel>> getClientProjects(String clientId) {
+    return _firestore
+        .collection('projects')
+        .where('clientId', isEqualTo: clientId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProjectModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Get freelancer projects
+  Stream<List<ProjectModel>> getFreelancerProjects(String freelancerId) {
+    return _firestore
+        .collection('projects')
+        .where('freelancerId', isEqualTo: freelancerId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProjectModel.fromFirestore(doc))
             .toList());
   }
 

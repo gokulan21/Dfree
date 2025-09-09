@@ -5,6 +5,7 @@ import '../../models/project_model.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/project_card.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/project_detail_dialog.dart';
 import '../../utils/constants.dart';
 
 class FreelancerProjectsPage extends StatefulWidget {
