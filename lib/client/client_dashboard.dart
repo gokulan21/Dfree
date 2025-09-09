@@ -46,29 +46,35 @@ class _ClientDashboardState extends State<ClientDashboard> {
       key: _scaffoldKey,
       backgroundColor: AppColors.bgPrimary,
       drawer: !isDesktop ? _buildDrawer() : null,
-      body: Row(
-        children: [
-          if (isDesktop)
-            CustomSidebar(
-              selectedIndex: _selectedIndex,
-              onItemSelected: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              userRole: 'client',
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        left: false,
+        right: false,
+        child: Row(
+          children: [
+            if (isDesktop)
+              CustomSidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                userRole: 'client',
+              ),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildAppBar(isDesktop),
+                  Expanded(
+                    child: _pages[_selectedIndex],
+                  ),
+                ],
+              ),
             ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildAppBar(isDesktop),
-                Expanded(
-                  child: _pages[_selectedIndex],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -92,20 +98,32 @@ class _ClientDashboardState extends State<ClientDashboard> {
             IconButton(
               icon: const Icon(Icons.menu, color: Colors.white),
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
             ),
-          const SizedBox(width: 16),
-          Text(
-            _titles[_selectedIndex],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          if (!isDesktop) const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _titles[_selectedIndex],
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(),
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Colors.white),
             onPressed: () {},
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
           ),
           const SizedBox(width: 8),
           Container(
@@ -131,15 +149,17 @@ class _ClientDashboardState extends State<ClientDashboard> {
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: AppColors.bgSecondary,
-      child: CustomSidebar(
-        selectedIndex: _selectedIndex,
-        onItemSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          Navigator.pop(context);
-        },
-        userRole: 'client',
+      child: SafeArea(
+        child: CustomSidebar(
+          selectedIndex: _selectedIndex,
+          onItemSelected: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+            Navigator.pop(context);
+          },
+          userRole: 'client',
+        ),
       ),
     );
   }

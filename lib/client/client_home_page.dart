@@ -82,17 +82,18 @@ class _ClientHomePageState extends State<ClientHomePage> {
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 768 ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome Section
             _buildWelcomeSection(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             
             // Metrics Cards
             _buildMetricsSection(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             
             // Recent Projects and Top Freelancers
             LayoutBuilder(
@@ -106,17 +107,21 @@ class _ClientHomePageState extends State<ClientHomePage> {
                     ],
                   );
                 } else {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildRecentProjects()),
-                      const SizedBox(width: 24),
-                      Expanded(child: _buildTopFreelancers()),
-                    ],
+                  return IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _buildRecentProjects()),
+                        const SizedBox(width: 24),
+                        Expanded(child: _buildTopFreelancers()),
+                      ],
+                    ),
                   );
                 }
               },
             ),
+            // Add bottom padding for scroll
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -127,7 +132,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
     return CustomCard(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [AppColors.accentCyan, AppColors.accentPink],
@@ -138,12 +143,13 @@ class _ClientHomePageState extends State<ClientHomePage> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'Welcome back!',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -152,20 +158,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
               'Manage your projects and find the best freelancers',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to create project
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create New Project'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.accentCyan,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                fontSize: 14,
               ),
             ),
           ],
@@ -173,21 +166,27 @@ class _ClientHomePageState extends State<ClientHomePage> {
       ),
     );
   }
-
   Widget _buildMetricsSection() {
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount = 4;
-        if (constraints.maxWidth < 768) crossAxisCount = 2;
-        if (constraints.maxWidth < 480) crossAxisCount = 1;
+        double childAspectRatio = 1.3;
+        
+        if (constraints.maxWidth < 480) {
+          crossAxisCount = 2;
+          childAspectRatio = 1.1;
+        } else if (constraints.maxWidth < 768) {
+          crossAxisCount = 2;
+          childAspectRatio = 1.2;
+        }
         
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: childAspectRatio,
           children: [
             _buildMetricCard(
               'Total Projects',
@@ -222,33 +221,41 @@ class _ClientHomePageState extends State<ClientHomePage> {
   Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 28),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                Icon(icon, color: color, size: 24),
+                Flexible(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
                 color: AppColors.textGrey,
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
-              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -259,45 +266,54 @@ class _ClientHomePageState extends State<ClientHomePage> {
   Widget _buildRecentProjects() {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Recent Projects',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                const Flexible(
+                  child: Text(
+                    'Recent Projects',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton(
                   onPressed: () {
                     // Navigate to projects page
                   },
-                  child: const Text('View All'),
+                  child: const Text(
+                    'View All',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (_recentProjects.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
                   child: Text(
                     'No projects yet. Create your first project!',
                     style: TextStyle(color: AppColors.textGrey),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
             else
-              ListView.builder(
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _recentProjects.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return ProjectCard(
                     project: _recentProjects[index],
@@ -316,45 +332,54 @@ class _ClientHomePageState extends State<ClientHomePage> {
   Widget _buildTopFreelancers() {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Top Freelancers',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                const Flexible(
+                  child: Text(
+                    'Top Freelancers',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton(
                   onPressed: () {
                     // Navigate to freelancers page
                   },
-                  child: const Text('View All'),
+                  child: const Text(
+                    'View All',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (_topFreelancers.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
                   child: Text(
                     'No freelancers available.',
                     style: TextStyle(color: AppColors.textGrey),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
             else
-              ListView.builder(
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _topFreelancers.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return FreelancerCard(
                     freelancer: _topFreelancers[index],
@@ -370,4 +395,3 @@ class _ClientHomePageState extends State<ClientHomePage> {
     );
   }
 }
-
