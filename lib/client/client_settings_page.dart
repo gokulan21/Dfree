@@ -29,9 +29,8 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
   
-  // Notification preferences
+  // Notification preferences - removed push notifications
   bool _emailNotifications = true;
-  bool _pushNotifications = true;
   bool _projectUpdates = true;
   bool _messageNotifications = true;
 
@@ -63,9 +62,8 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
           _companyController.text = userData.company ?? '';
           _bioController.text = userData.bio ?? '';
           
-          // Load notification preferences
+          // Load notification preferences - removed push notifications
           _emailNotifications = userData.preferences['emailNotifications'] ?? true;
-          _pushNotifications = userData.preferences['pushNotifications'] ?? true;
           _projectUpdates = userData.preferences['projectUpdates'] ?? true;
           _messageNotifications = userData.preferences['messageNotifications'] ?? true;
           
@@ -100,7 +98,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
         'bio': _bioController.text.trim(),
         'preferences': {
           'emailNotifications': _emailNotifications,
-          'pushNotifications': _pushNotifications,
           'projectUpdates': _projectUpdates,
           'messageNotifications': _messageNotifications,
         },
@@ -306,9 +303,21 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             // Form fields
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Full Name',
-                prefixIcon: Icon(Icons.person_outline),
+                labelStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.person_outline, color: AppColors.accentCyan),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.accentCyan),
+                ),
+                filled: true,
+                fillColor: Colors.black12,
               ),
             ),
             const SizedBox(height: 16),
@@ -316,28 +325,69 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             TextFormField(
               controller: _emailController,
               enabled: false,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: AppColors.textGrey),
+              decoration: InputDecoration(
                 labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
+                labelStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textGrey),
                 helperText: 'Email cannot be changed',
+                helperStyle: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                filled: true,
+                fillColor: Colors.black12,
               ),
             ),
             const SizedBox(height: 16),
             
             TextFormField(
               controller: _phoneController,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Phone Number',
-                prefixIcon: Icon(Icons.phone_outlined),
+                labelStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.accentCyan),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.accentCyan),
+                ),
+                filled: true,
+                fillColor: Colors.black12,
               ),
             ),
             const SizedBox(height: 16),
             
             TextFormField(
               controller: _companyController,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Company',
-                prefixIcon: Icon(Icons.business_outlined),
+                labelStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.business_outlined, color: AppColors.accentCyan),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.accentCyan),
+                ),
+                filled: true,
+                fillColor: Colors.black12,
               ),
             ),
             const SizedBox(height: 16),
@@ -345,10 +395,22 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             TextFormField(
               controller: _bioController,
               maxLines: 3,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Bio',
-                prefixIcon: Icon(Icons.description_outlined),
+                labelStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.description_outlined, color: AppColors.accentCyan),
                 alignLabelWithHint: true,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.accentCyan),
+                ),
+                filled: true,
+                fillColor: Colors.black12,
               ),
             ),
             const SizedBox(height: 24),
@@ -362,13 +424,19 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+                    : const Icon(Icons.save, color: Colors.white),
+                label: Text(
+                  _isSaving ? 'Saving...' : 'Save Changes',
+                  style: const TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentCyan,
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -400,13 +468,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
               'Receive updates via email',
               _emailNotifications,
               (value) => setState(() => _emailNotifications = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Push Notifications',
-              'Receive push notifications',
-              _pushNotifications,
-              (value) => setState(() => _pushNotifications = value),
             ),
             
             _buildNotificationSwitch(
@@ -465,6 +526,9 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             value: value,
             onChanged: onChanged,
             activeColor: AppColors.accentCyan,
+            activeTrackColor: AppColors.accentCyan.withOpacity(0.3),
+            inactiveThumbColor: AppColors.textGrey,
+            inactiveTrackColor: AppColors.borderColor,
           ),
         ],
       ),
@@ -488,50 +552,16 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             ),
             const SizedBox(height: 24),
             
-            // Change Password
+            // Sign Out - Only action remaining
             ListTile(
-              leading: const Icon(Icons.lock_outline, color: AppColors.accentCyan),
-              title: const Text(
-                'Change Password',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Update your account password',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Show change password dialog
-              },
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
-            // Export Data
-            ListTile(
-              leading: const Icon(Icons.download, color: AppColors.accentCyan),
-              title: const Text(
-                'Export Data',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Download your account data',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Export data functionality
-              },
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
-            // Sign Out
-            ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.logout, color: AppColors.dangerRed),
               title: const Text(
                 'Sign Out',
-                style: TextStyle(color: AppColors.dangerRed),
+                style: TextStyle(
+                  color: AppColors.dangerRed,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               subtitle: const Text(
                 'Sign out of your account',
@@ -539,25 +569,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
               ),
               trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
               onTap: _signOut,
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
-            // Delete Account
-            ListTile(
-              leading: const Icon(Icons.delete_forever, color: AppColors.dangerRed),
-              title: const Text(
-                'Delete Account',
-                style: TextStyle(color: AppColors.dangerRed),
-              ),
-              subtitle: const Text(
-                'Permanently delete your account',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Show delete account confirmation
-              },
             ),
           ],
         ),

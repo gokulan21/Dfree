@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/custom_card.dart';
@@ -23,6 +24,8 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
   String _selectedSkillFilter = 'all';
   double _minRating = 0.0;
   double _maxHourlyRate = 1000.0;
+  StreamSubscription<List<UserModel>>? _freelancersSubscription;
+  String? _error;
 
   final List<String> _skillFilters = [
     'all', 'Flutter', 'React', 'Node.js', 'Python', 'JavaScript',
@@ -39,24 +42,54 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _freelancersSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _loadFreelancers() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      _firestoreService.getFreelancers().listen((freelancers) {
-        setState(() {
-          _freelancers = freelancers;
-          _filteredFreelancers = freelancers;
-          _isLoading = false;
-        });
-        _applyFilters();
-      });
+      // Cancel previous subscription
+      await _freelancersSubscription?.cancel();
+      
+      _freelancersSubscription = _firestoreService.getFreelancers().listen(
+        (freelancers) {
+          if (mounted) {
+            setState(() {
+              _freelancers = freelancers;
+              _isLoading = false;
+              _error = null;
+            });
+            _applyFilters();
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _error = error.toString();
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error loading freelancers: ${error.toString()}'),
+                backgroundColor: AppColors.dangerRed,
+              ),
+            );
+          }
+        },
+      );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading freelancers: ${e.toString()}'),
@@ -68,6 +101,8 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
   }
 
   void _applyFilters() {
+    if (!mounted) return;
+    
     List<UserModel> filtered = List.from(_freelancers);
     
     // Search filter
@@ -104,22 +139,27 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          _buildHeader(),
-          const SizedBox(height: 24),
-          
-          // Search and Filters
-          _buildSearchAndFilters(),
-          const SizedBox(height: 24),
-          
-          // Freelancers Grid
-          _buildFreelancersGrid(),
-        ],
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              _buildHeader(),
+              const SizedBox(height: 24),
+              
+              // Search and Filters
+              _buildSearchAndFilters(),
+              const SizedBox(height: 24),
+              
+              // Freelancers Grid
+              _buildFreelancersGrid(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -128,26 +168,28 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Find Freelancers',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Find Freelancers',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${_filteredFreelancers.length} freelancers available',
-              style: const TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 16,
+              const SizedBox(height: 4),
+              Text(
+                '${_filteredFreelancers.length} freelancers available',
+                style: const TextStyle(
+                  color: AppColors.textGrey,
+                  fontSize: 16,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         ElevatedButton.icon(
           onPressed: _showAdvancedFilters,
@@ -172,10 +214,25 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
             TextField(
               controller: _searchController,
               onChanged: (_) => _applyFilters(),
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 hintText: 'Search freelancers by name, skills, or bio...',
-                prefixIcon: Icon(Icons.search, color: AppColors.accentCyan),
-                border: OutlineInputBorder(),
+                hintStyle: const TextStyle(color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.search, color: AppColors.accentCyan),
+                filled: true,
+                fillColor: AppColors.bgSecondary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accentCyan),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -192,15 +249,22 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                       label: Text(skill == 'all' ? 'All Skills' : skill),
                       selected: isSelected,
                       onSelected: (selected) {
-                        setState(() {
-                          _selectedSkillFilter = skill;
-                        });
-                        _applyFilters();
+                        if (selected) {
+                          setState(() {
+                            _selectedSkillFilter = skill;
+                          });
+                          _applyFilters();
+                        }
                       },
                       selectedColor: AppColors.accentCyan.withOpacity(0.3),
                       checkmarkColor: AppColors.accentCyan,
+                      backgroundColor: AppColors.cardColor,
                       labelStyle: TextStyle(
                         color: isSelected ? AppColors.accentCyan : AppColors.textGrey,
+                        fontSize: 12,
+                      ),
+                      side: BorderSide(
+                        color: isSelected ? AppColors.accentCyan : AppColors.borderColor,
                       ),
                     ),
                   );
@@ -215,7 +279,57 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
 
   Widget _buildFreelancersGrid() {
     if (_isLoading) {
-      return const Center(child: LoadingWidget());
+      return const Center(
+        child: LoadingWidget(
+          message: 'Loading freelancers...',
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Center(
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: AppColors.dangerRed,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Error loading freelancers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadFreelancers,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentCyan,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     if (_filteredFreelancers.isEmpty) {
@@ -258,6 +372,10 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                     });
                     _applyFilters();
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentCyan,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Clear Filters'),
                 ),
               ],
@@ -311,13 +429,22 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Advanced Filters',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Advanced Filters',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   
@@ -331,17 +458,30 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Slider(
-                    value: _minRating,
-                    min: 0.0,
-                    max: 5.0,
-                    divisions: 10,
-                    label: _minRating.toStringAsFixed(1),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        _minRating = value;
-                      });
-                    },
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: AppColors.accentCyan,
+                      inactiveTrackColor: AppColors.borderColor,
+                      thumbColor: AppColors.accentCyan,
+                      overlayColor: AppColors.accentCyan.withOpacity(0.2),
+                      valueIndicatorColor: AppColors.accentCyan,
+                      valueIndicatorTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                    child: Slider(
+                      value: _minRating,
+                      min: 0.0,
+                      max: 5.0,
+                      divisions: 10,
+                      label: _minRating.toStringAsFixed(1),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _minRating = value;
+                        });
+                      },
+                    ),
                   ),
                   const SizedBox(height: 16),
                   
@@ -355,17 +495,30 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Slider(
-                    value: _maxHourlyRate,
-                    min: 10.0,
-                    max: 1000.0,
-                    divisions: 99,
-                    label: '\$${_maxHourlyRate.toInt()}',
-                    onChanged: (value) {
-                      setDialogState(() {
-                        _maxHourlyRate = value;
-                      });
-                    },
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: AppColors.accentCyan,
+                      inactiveTrackColor: AppColors.borderColor,
+                      thumbColor: AppColors.accentCyan,
+                      overlayColor: AppColors.accentCyan.withOpacity(0.2),
+                      valueIndicatorColor: AppColors.accentCyan,
+                      valueIndicatorTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                    child: Slider(
+                      value: _maxHourlyRate,
+                      min: 10.0,
+                      max: 1000.0,
+                      divisions: 99,
+                      label: '\$${_maxHourlyRate.toInt()}',
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _maxHourlyRate = value;
+                        });
+                      },
+                    ),
                   ),
                   const SizedBox(height: 24),
                   
@@ -380,7 +533,10 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                             _maxHourlyRate = 1000.0;
                           });
                         },
-                        child: const Text('Reset'),
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(color: AppColors.textGrey),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton(
@@ -388,6 +544,10 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
                           Navigator.pop(context);
                           _applyFilters();
                         },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentCyan,
+                          foregroundColor: Colors.white,
+                        ),
                         child: const Text('Apply'),
                       ),
                     ],
@@ -618,7 +778,14 @@ class FreelancerDetailDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Send message
+                      Navigator.pop(context);
+                      // Navigate to messaging or implement send message functionality
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Messaging feature coming soon!'),
+                          backgroundColor: AppColors.accentCyan,
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.message),
                     label: const Text('Send Message'),
@@ -632,7 +799,14 @@ class FreelancerDetailDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Hire freelancer
+                      Navigator.pop(context);
+                      // Navigate to hire freelancer or implement hire functionality
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Hire feature coming soon!'),
+                          backgroundColor: AppColors.accentPink,
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.work),
                     label: const Text('Hire'),

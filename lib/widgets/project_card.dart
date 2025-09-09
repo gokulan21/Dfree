@@ -22,10 +22,10 @@ class ProjectCard extends StatelessWidget {
     return CustomCard(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(16), // Consistent padding
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Prevent overflow
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Header
             Row(
@@ -61,7 +61,7 @@ class ProjectCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                Flexible(
                   flex: 1,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -102,7 +102,7 @@ class ProjectCard extends StatelessWidget {
             // Skills
             if (project.skills.isNotEmpty) ...[
               SizedBox(
-                height: 24, // Fixed height to prevent overflow
+                height: 24,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: project.skills.length > 4 ? 4 : project.skills.length,
@@ -354,7 +354,7 @@ class ProjectListCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '\${project.budget.toStringAsFixed(0)}',
+                    '\$${project.budget.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: AppColors.successGreen,
                       fontSize: 16,
