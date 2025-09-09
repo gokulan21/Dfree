@@ -165,7 +165,7 @@ class ChatService {
     }
   }
 
-  // Get user's chat rooms
+  // Get user's chat rooms - FIXED VERSION
   Stream<List<ChatRoom>> getUserChatRooms() {
     try {
       if (_currentUserId.isEmpty) {
@@ -173,15 +173,14 @@ class ChatService {
         return Stream.value(<ChatRoom>[]);
       }
 
+      // Simplified query to avoid composite index requirement
       return _firestore
           .collection('chats')
           .where('participantIds', arrayContains: _currentUserId)
-          .where('isActive', isEqualTo: true)
-          .orderBy('updatedAt', descending: true)
           .snapshots()
           .map((snapshot) {
             try {
-              return snapshot.docs
+              List<ChatRoom> chatRooms = snapshot.docs
                   .map((doc) {
                     try {
                       return ChatRoom.fromFirestore(doc);
@@ -190,9 +189,14 @@ class ChatService {
                       return null;
                     }
                   })
-                  .where((chatRoom) => chatRoom != null)
+                  .where((chatRoom) => chatRoom != null && chatRoom.isActive)
                   .cast<ChatRoom>()
                   .toList();
+
+              // Sort by updatedAt in Dart instead of Firestore
+              chatRooms.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+              
+              return chatRooms;
             } catch (e) {
               print('Error parsing chat rooms: $e');
               return <ChatRoom>[];
@@ -234,7 +238,8 @@ class ChatService {
         await batch.commit();
       }
     } catch (e) {
-      throw Exception('Failed to mark messages as read: ${e.toString()}');
+      print('Error marking messages as read: $e');
+      // Don't throw here to avoid breaking the UI
     }
   }
 
@@ -289,14 +294,15 @@ class ChatService {
       final chatRooms = await _firestore
           .collection('chats')
           .where('participantIds', arrayContains: _currentUserId)
-          .where('isActive', isEqualTo: true)
           .get();
 
       int totalUnread = 0;
       for (var doc in chatRooms.docs) {
         try {
           final chatRoom = ChatRoom.fromFirestore(doc);
-          totalUnread += chatRoom.unreadCount[_currentUserId] ?? 0;
+          if (chatRoom.isActive) {
+            totalUnread += chatRoom.unreadCount[_currentUserId] ?? 0;
+          }
         } catch (e) {
           print('Error parsing chat room for unread count: $e');
         }

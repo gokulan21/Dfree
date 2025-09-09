@@ -28,7 +28,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
   @override
   void initState() {
     super.initState();
-    _loadChatRooms();
+    _initializeChat();
   }
 
   @override
@@ -37,23 +37,34 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     super.dispose();
   }
 
-  Future<void> _loadChatRooms() async {
+  Future<void> _initializeChat() async {
     try {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
 
-      // Check if user is authenticated
-      final currentUser = _authService.currentUser;
-      if (currentUser == null) {
+      // Check authentication first
+      final isAuthenticated = await _chatService.checkAuthState();
+      if (!isAuthenticated) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'User not authenticated. Please log in again.';
+          _errorMessage = 'Please log in to access your conversations.';
         });
         return;
       }
 
+      _loadChatRooms();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to initialize chat: ${e.toString()}';
+      });
+    }
+  }
+
+  void _loadChatRooms() {
+    try {
       // Listen to chat rooms stream
       _chatService.getUserChatRooms().listen(
         (chatRooms) {
@@ -69,7 +80,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
           if (mounted) {
             setState(() {
               _isLoading = false;
-              _errorMessage = 'Error loading chats: ${error.toString()}';
+              _errorMessage = 'Error loading conversations: ${error.toString()}';
             });
           }
         },
@@ -78,7 +89,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Failed to load chats: ${e.toString()}';
+          _errorMessage = 'Failed to load conversations: ${e.toString()}';
         });
       }
     }
@@ -104,6 +115,15 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
+      appBar: AppBar(
+        title: const Text(
+          'Communication',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: AppColors.bgPrimary,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: SafeArea(
         child: _buildContent(),
       ),
@@ -112,7 +132,9 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(child: LoadingWidget(message: 'Loading conversations...'));
+      return const Center(
+        child: LoadingWidget(message: 'Loading conversations...'),
+      );
     }
 
     if (_errorMessage != null) {
@@ -145,9 +167,9 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
               color: AppColors.dangerRed,
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Oops! Something went wrong',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -164,7 +186,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadChatRooms,
+              onPressed: _initializeChat,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentCyan,
                 foregroundColor: Colors.white,
@@ -311,7 +333,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
               ),
               SizedBox(height: 8),
               Text(
-                'Start a conversation with a client or freelancer to see it here.',
+                'Start a conversation with a client to see it here.',
                 style: TextStyle(
                   color: AppColors.textGrey,
                   fontSize: 14,
@@ -325,30 +347,30 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     }
 
     if (filteredChatRooms.isEmpty && _searchQuery.isNotEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.search_off,
                 size: 64,
                 color: AppColors.textGrey,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 'No results found',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Try searching with different keywords.',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textGrey,
                   fontSize: 14,
                 ),
@@ -400,10 +422,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
               _selectedChatRoom = chatRoom;
             });
             // Mark messages as read when chat is opened
-            _chatService.markMessagesAsRead(chatRoom.id).catchError((e) {
-              // Handle error silently for now
-              debugPrint('Error marking messages as read: $e');
-            });
+            _chatService.markMessagesAsRead(chatRoom.id);
           },
           child: Padding(
             padding: const EdgeInsets.all(12),
