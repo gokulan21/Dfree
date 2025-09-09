@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../services/project_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/project_model.dart';
@@ -15,28 +16,24 @@ class FreelancerProjectsPage extends StatefulWidget {
   State<FreelancerProjectsPage> createState() => _FreelancerProjectsPageState();
 }
 
-class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
-    with TickerProviderStateMixin {
+class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
 
-  late TabController _tabController;
   List<ProjectModel> _myProjects = [];
-  List<ProjectModel> _availableProjects = [];
   bool _isLoadingMyProjects = true;
-  bool _isLoadingAvailable = true;
   String _selectedFilter = 'all';
+  StreamSubscription<List<ProjectModel>>? _projectsSubscription;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadProjects();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _projectsSubscription?.cancel();
     super.dispose();
   }
 
@@ -44,28 +41,55 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
     try {
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
-        // Load my projects
-        _projectService.getFreelancerProjects(currentUser.uid).listen((projects) {
+        // Cancel previous subscription if exists
+        _projectsSubscription?.cancel();
+        
+        // Listen to projects stream
+        _projectsSubscription = _projectService.getFreelancerProjects(currentUser.uid).listen(
+          (projects) {
+            if (mounted) {
+              setState(() {
+                _myProjects = projects;
+                _isLoadingMyProjects = false;
+              });
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              setState(() {
+                _isLoadingMyProjects = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error loading projects: ${error.toString()}'),
+                  backgroundColor: AppColors.dangerRed,
+                ),
+              );
+            }
+          },
+        );
+
+        // Set timeout to prevent infinite loading
+        Timer(const Duration(seconds: 10), () {
+          if (mounted && _isLoadingMyProjects) {
+            setState(() {
+              _isLoadingMyProjects = false;
+            });
+          }
+        });
+      } else {
+        // No user logged in
+        if (mounted) {
           setState(() {
-            _myProjects = projects;
             _isLoadingMyProjects = false;
           });
-        });
-
-        // Load available projects
-        _projectService.getAvailableProjects().listen((projects) {
-          setState(() {
-            _availableProjects = projects;
-            _isLoadingAvailable = false;
-          });
-        });
+        }
       }
     } catch (e) {
-      setState(() {
-        _isLoadingMyProjects = false;
-        _isLoadingAvailable = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoadingMyProjects = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading projects: ${e.toString()}'),
@@ -79,175 +103,87 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
   List<ProjectModel> get _filteredMyProjects {
     if (_selectedFilter == 'all') return _myProjects;
 
-    final status = ProjectStatus.values.firstWhere(
-      (s) => s.name == _selectedFilter,
-      orElse: () => ProjectStatus.pending,
-    );
+    ProjectStatus? filterStatus;
+    switch (_selectedFilter) {
+      case 'pending':
+        filterStatus = ProjectStatus.pending;
+        break;
+      case 'inProgress':
+        filterStatus = ProjectStatus.inProgress;
+        break;
+      case 'completed':
+        filterStatus = ProjectStatus.completed;
+        break;
+      case 'cancelled':
+        filterStatus = ProjectStatus.cancelled;
+        break;
+      case 'onHold':
+        filterStatus = ProjectStatus.onHold;
+        break;
+    }
 
-    return _myProjects.where((project) => project.status == status).toList();
+    if (filterStatus != null) {
+      return _myProjects.where((project) => project.status == filterStatus).toList();
+    }
+
+    return _myProjects;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Tab Bar
-        Container(
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppColors.cardColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'My Projects'),
-              Tab(text: 'Available Projects'),
-            ],
-            labelColor: AppColors.accentCyan,
-            unselectedLabelColor: AppColors.textGrey,
-            indicator: BoxDecoration(
-              color: AppColors.accentCyan.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-
-        // Tab Content
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildMyProjectsTab(),
-              _buildAvailableProjectsTab(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMyProjectsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Filters
-          _buildFilters(),
-          const SizedBox(height: 24),
-
-          // Project Statistics
-          _buildProjectStats(),
-          const SizedBox(height: 24),
-
-          // Projects List
-          _buildMyProjectsList(),
-        ],
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      body: SafeArea(
+        child: _buildMyProjectsContent(),
       ),
     );
   }
 
-  Widget _buildAvailableProjectsTab() {
-    if (_isLoadingAvailable) {
-      return const Center(child: LoadingWidget());
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Browse Available Projects',
+  Widget _buildMyProjectsContent() {
+    return RefreshIndicator(
+      onRefresh: _loadProjects,
+      color: AppColors.accentCyan,
+      backgroundColor: AppColors.cardColor,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Page Title
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'My Projects',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                '${_availableProjects.length} projects available',
-                style: const TextStyle(
-                  color: AppColors.textGrey,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Available Projects Grid
-          if (_availableProjects.isEmpty)
-            CustomCard(
-              child: Padding(
-                padding: const EdgeInsets.all(48),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.work_outline,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No projects available at the moment',
-                        style: TextStyle(
-                          color: AppColors.textGrey,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Check back later for new opportunities',
-                        style: TextStyle(
-                          color: AppColors.textGrey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                int crossAxisCount = 2;
-                if (constraints.maxWidth < 768) crossAxisCount = 1;
-
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.2,
-                  ),
-                  itemCount: _availableProjects.length,
-                  itemBuilder: (context, index) {
-                    return ProjectCard(
-                      project: _availableProjects[index],
-                      onTap: () => _showProjectDetail(_availableProjects[index]),
-                      showApplyButton: true,
-                    );
-                  },
-                );
-              },
             ),
-        ],
+
+            // Filters
+            _buildFilters(),
+            const SizedBox(height: 16),
+
+            // Project Statistics
+            if (!_isLoadingMyProjects) ...[
+              _buildProjectStats(),
+              const SizedBox(height: 16),
+            ],
+
+            // Projects List
+            _buildMyProjectsList(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFilters() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Filter by status:',
@@ -257,21 +193,23 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterChip('all', 'All'),
-                const SizedBox(width: 8),
-                _buildFilterChip('inProgress', 'In Progress'),
-                const SizedBox(width: 8),
-                _buildFilterChip('completed', 'Completed'),
-                const SizedBox(width: 8),
-                _buildFilterChip('pending', 'Pending'),
-              ],
-            ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip('all', 'All'),
+              const SizedBox(width: 8),
+              _buildFilterChip('pending', 'Pending'),
+              const SizedBox(width: 8),
+              _buildFilterChip('inProgress', 'In Progress'),
+              const SizedBox(width: 8),
+              _buildFilterChip('completed', 'Completed'),
+              const SizedBox(width: 8),
+              _buildFilterChip('cancelled', 'Cancelled'),
+              const SizedBox(width: 8),
+              _buildFilterChip('onHold', 'On Hold'),
+            ],
           ),
         ),
       ],
@@ -292,6 +230,11 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
       checkmarkColor: AppColors.accentCyan,
       labelStyle: TextStyle(
         color: isSelected ? AppColors.accentCyan : AppColors.textGrey,
+        fontSize: 12,
+      ),
+      backgroundColor: AppColors.cardColor,
+      side: BorderSide(
+        color: isSelected ? AppColors.accentCyan : AppColors.borderColor,
       ),
     );
   }
@@ -304,17 +247,17 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        int crossAxisCount = 4;
-        if (constraints.maxWidth < 768) crossAxisCount = 2;
-        if (constraints.maxWidth < 480) crossAxisCount = 1;
+        int crossAxisCount = 2;
+        if (constraints.maxWidth > 600) crossAxisCount = 4;
+        if (constraints.maxWidth < 400) crossAxisCount = 1;
 
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.2,
           children: [
             _buildStatCard('Total', totalProjects, AppColors.accentCyan),
             _buildStatCard('Active', activeProjects, AppColors.warningYellow),
@@ -329,36 +272,42 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
   Widget _buildStatCard(String title, int count, Color color) {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
             Container(
               width: 4,
-              height: 40,
+              height: 24,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    count.toString(),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      count.toString(),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textGrey,
-                      fontSize: 14,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],
@@ -372,7 +321,14 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
 
   Widget _buildMyProjectsList() {
     if (_isLoadingMyProjects) {
-      return const Center(child: LoadingWidget());
+      return CustomCard(
+        child: Container(
+          padding: const EdgeInsets.all(48.0),
+          child: const Center(
+            child: LoadingWidget(message: "Loading your projects..."),
+          ),
+        ),
+      );
     }
 
     final filteredProjects = _filteredMyProjects;
@@ -380,26 +336,39 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
     if (filteredProjects.isEmpty) {
       return CustomCard(
         child: Padding(
-          padding: const EdgeInsets.all(48),
+          padding: const EdgeInsets.all(32),
           child: Center(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.folder_open,
-                  size: 64,
+                  size: 48,
                   color: Colors.grey[400],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
-                  _selectedFilter == 'all'
-                      ? 'No projects yet. Browse available projects to get started!'
-                      : 'No $_selectedFilter projects found.',
+                  _getEmptyStateMessage(),
                   style: const TextStyle(
                     color: AppColors.textGrey,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
                 ),
+                if (_selectedFilter != 'all') ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedFilter = 'all';
+                      });
+                    },
+                    child: const Text(
+                      'Show all projects',
+                      style: TextStyle(color: AppColors.accentCyan),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -409,11 +378,12 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 768) {
-          return ListView.builder(
+        if (constraints.maxWidth < 600) {
+          return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: filteredProjects.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               return ProjectCard(
                 project: filteredProjects[index],
@@ -427,9 +397,9 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.0,
             ),
             itemCount: filteredProjects.length,
             itemBuilder: (context, index) {
@@ -442,6 +412,25 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage>
         }
       },
     );
+  }
+
+  String _getEmptyStateMessage() {
+    switch (_selectedFilter) {
+      case 'all':
+        return 'No projects yet. Start by applying to available projects!';
+      case 'pending':
+        return 'No pending projects found.';
+      case 'inProgress':
+        return 'No projects in progress.';
+      case 'completed':
+        return 'No completed projects yet.';
+      case 'cancelled':
+        return 'No cancelled projects.';
+      case 'onHold':
+        return 'No projects on hold.';
+      default:
+        return 'No projects found for the selected filter.';
+    }
   }
 
   void _showProjectDetail(ProjectModel project) {

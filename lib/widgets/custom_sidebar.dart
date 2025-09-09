@@ -18,6 +18,9 @@ class CustomSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 280,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height,
+      ),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(
@@ -27,26 +30,25 @@ class CustomSidebar extends StatelessWidget {
           ),
         ),
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Profile Section
-            _buildProfileSection(),
-            
-            // Navigation Items
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  children: _buildNavigationItems(),
-                ),
+      child: Column(
+        children: [
+          // Profile Section
+          _buildProfileSection(),
+          
+          // Navigation Items
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _buildNavigationItems(),
               ),
             ),
-            
-            // Footer
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+          
+          // Footer space
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
@@ -57,7 +59,8 @@ class CustomSidebar extends StatelessWidget {
       builder: (context, snapshot) {
         final user = snapshot.data;
         return Container(
-          padding: const EdgeInsets.all(24),
+          width: double.infinity,
+          padding: const EdgeInsets.all(20), // Reduced padding
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
@@ -69,8 +72,8 @@ class CustomSidebar extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44, // Slightly smaller
+                height: 44,
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [AppColors.accentCyan, AppColors.accentPink],
@@ -84,7 +87,7 @@ class CustomSidebar extends StatelessWidget {
                         : (userRole == 'client' ? 'C' : 'F'),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 18, // Reduced font size
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -101,16 +104,17 @@ class CustomSidebar extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        fontSize: 15, // Reduced font size
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       userRole == 'client' ? 'Client Account' : 'Freelancer Account',
                       style: TextStyle(
                         color: Colors.grey[400],
-                        fontSize: 12,
+                        fontSize: 11, // Reduced font size
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -225,7 +229,7 @@ class SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3), // Reduced margins
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -233,7 +237,9 @@ class SidebarItem extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 44), // Minimum height
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Reduced padding
             decoration: BoxDecoration(
               color: isActive 
                   ? AppColors.accentCyan.withOpacity(0.15) 
@@ -253,7 +259,7 @@ class SidebarItem extends StatelessWidget {
                   child: Icon(
                     icon,
                     color: isActive ? AppColors.accentCyan : AppColors.textGrey,
-                    size: 20,
+                    size: 18, // Reduced icon size
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -263,7 +269,7 @@ class SidebarItem extends StatelessWidget {
                     style: TextStyle(
                       color: isActive ? AppColors.accentCyan : AppColors.textGrey,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                      fontSize: 14,
+                      fontSize: 13, // Reduced font size
                     ),
                     child: Text(
                       label,

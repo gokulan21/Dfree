@@ -46,29 +46,31 @@ class _FreelancerDashboardState extends State<FreelancerDashboard> {
       key: _scaffoldKey,
       backgroundColor: AppColors.bgPrimary,
       drawer: !isDesktop ? _buildDrawer() : null,
-      body: Row(
-        children: [
-          if (isDesktop)
-            CustomSidebar(
-              selectedIndex: _selectedIndex,
-              onItemSelected: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              userRole: 'freelancer',
+      body: SafeArea( // Add SafeArea to prevent overflow issues
+        child: Row(
+          children: [
+            if (isDesktop)
+              CustomSidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                userRole: 'freelancer',
+              ),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildAppBar(isDesktop),
+                  Expanded(
+                    child: _pages[_selectedIndex],
+                  ),
+                ],
+              ),
             ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildAppBar(isDesktop),
-                Expanded(
-                  child: _pages[_selectedIndex],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -76,7 +78,9 @@ class _FreelancerDashboardState extends State<FreelancerDashboard> {
   Widget _buildAppBar(bool isDesktop) {
     return Container(
       height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? 20 : 16, // Responsive padding
+      ),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(
@@ -92,22 +96,31 @@ class _FreelancerDashboardState extends State<FreelancerDashboard> {
             IconButton(
               icon: const Icon(Icons.menu, color: Colors.white),
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              padding: EdgeInsets.zero, // Reduce button padding
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             ),
-          const SizedBox(width: 16),
-          Text(
-            _titles[_selectedIndex],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          if (!isDesktop) const SizedBox(width: 8),
+          Expanded( // Use Expanded to prevent overflow
+            child: Text(
+              _titles[_selectedIndex],
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isDesktop ? 20 : 18, // Responsive font size
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
-          const Spacer(),
+          // Notification button
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Colors.white),
             onPressed: () {},
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
           const SizedBox(width: 8),
+          // Profile avatar
           Container(
             width: 32,
             height: 32,
@@ -131,6 +144,7 @@ class _FreelancerDashboardState extends State<FreelancerDashboard> {
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: AppColors.bgSecondary,
+      width: MediaQuery.of(context).size.width * 0.8, // Responsive width
       child: CustomSidebar(
         selectedIndex: _selectedIndex,
         onItemSelected: (index) {
