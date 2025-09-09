@@ -38,16 +38,54 @@ class AuthService {
     }
   }
 
-  // Sign in with email and password
-  Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
+  // Sign in with email and password with role validation
+  Future<UserCredential> signInWithEmailAndPassword(
+    String email, 
+    String password, {
+    String? expectedRole,
+  }) async {
     try {
       final result = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Update last login
-      if (result.user != null) {
+      // If expectedRole is provided, validate user's role
+      if (expectedRole != null && result.user != null) {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(result.user!.uid)
+            .get();
+
+        if (!userDoc.exists) {
+          // Sign out the user since profile doesn't exist
+          await _auth.signOut();
+          throw Exception('User profile not found. Please contact support.');
+        }
+
+        final userData = userDoc.data();
+        final userRole = userData?['role'] as String?;
+
+        if (userRole == null) {
+          await _auth.signOut();
+          throw Exception('User role not found. Please contact support.');
+        }
+
+        if (userRole != expectedRole) {
+          // Sign out the user since role doesn't match
+          await _auth.signOut();
+          throw Exception(
+            'No ${expectedRole.toLowerCase()} account found with this email. '
+            'This email is registered as a ${userRole.toLowerCase()}.'
+          );
+        }
+
+        // Update last login if role matches
+        await _firestore.collection('users').doc(result.user!.uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      } else if (result.user != null) {
+        // Update last login for normal sign in without role validation
         await _firestore.collection('users').doc(result.user!.uid).update({
           'lastLogin': FieldValue.serverTimestamp(),
         });
@@ -57,6 +95,12 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
+      // Re-throw custom exceptions (like role validation errors)
+      if (e.toString().contains('account found') || 
+          e.toString().contains('profile not found') ||
+          e.toString().contains('role not found')) {
+        rethrow;
+      }
       throw Exception('Authentication failed: ${e.toString()}');
     }
   }
@@ -159,7 +203,7 @@ class AuthService {
   Exception _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
-        return Exception('No user found with this email address.');
+        return Exception('No account found with this email address.');
       case 'wrong-password':
         return Exception('Incorrect password. Please try again.');
       case 'email-already-in-use':
@@ -172,28 +216,37 @@ class AuthService {
         return Exception('This account has been disabled.');
       case 'too-many-requests':
         return Exception('Too many failed attempts. Please try again later.');
+      case 'invalid-credential':
+        return Exception('Invalid email or password. Please check your credentials.');
       default:
         return Exception('Authentication error: ${e.message}');
     }
   }
 
-  // Demo sign in method (for testing)
-  Future<UserCredential> signInDemo(String username, String role) async {
+  // Demo sign in method (for testing) with role validation
+  Future<UserCredential> signInDemo(String username, String expectedRole) async {
     try {
-      String email = '${username.toLowerCase()}@${role.toLowerCase()}.demo';
+      String email = '${username.toLowerCase()}@${expectedRole.toLowerCase()}.demo';
       String password = 'demo123';
 
       try {
-        return await signInWithEmailAndPassword(email, password);
+        return await signInWithEmailAndPassword(
+          email, 
+          password, 
+          expectedRole: expectedRole,
+        );
       } on Exception catch (e) {
-        if (e.toString().contains('user-not-found')) {
-          // Create demo account
+        if (e.toString().contains('No account found') || 
+            e.toString().contains('user-not-found')) {
+          // Create demo account with proper role name formatting
+          String displayName = expectedRole == 'client' ? 'Client Demo User' : 'Freelancer Demo User';
+          
           return await createUserWithEmailAndPassword(
             email: email,
             password: password,
-            name: username,
-            role: role,
-            company: role == 'client' ? 'Demo Company' : null,
+            name: displayName,
+            role: expectedRole,
+            company: expectedRole == 'client' ? 'Demo Company' : null,
           );
         }
         rethrow;

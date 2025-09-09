@@ -14,26 +14,20 @@ class FreelancerSettingsPage extends StatefulWidget {
 
 class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
   final AuthService _authService = AuthService();
-  
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _bioController = TextEditingController();
   final _hourlyRateController = TextEditingController();
-  
+
   UserModel? _currentUser;
   bool _isLoading = true;
   bool _isSaving = false;
-  
+
   // Skills management
   final _skillController = TextEditingController();
   List<String> _skills = [];
-  
-  // Notification preferences
-  bool _emailNotifications = true;
-  bool _pushNotifications = true;
-  bool _projectUpdates = true;
-  bool _messageNotifications = true;
 
   @override
   void initState() {
@@ -64,13 +58,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
           _bioController.text = userData.bio ?? '';
           _hourlyRateController.text = userData.hourlyRate.toString();
           _skills = List.from(userData.skills);
-          
-          // Load notification preferences
-          _emailNotifications = userData.preferences['emailNotifications'] ?? true;
-          _pushNotifications = userData.preferences['pushNotifications'] ?? true;
-          _projectUpdates = userData.preferences['projectUpdates'] ?? true;
-          _messageNotifications = userData.preferences['messageNotifications'] ?? true;
-          
+
           _isLoading = false;
         });
       }
@@ -96,19 +84,13 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
 
     try {
       final hourlyRate = double.tryParse(_hourlyRateController.text) ?? 0.0;
-      
+
       final updateData = {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'bio': _bioController.text.trim(),
         'hourlyRate': hourlyRate,
         'skills': _skills,
-        'preferences': {
-          'emailNotifications': _emailNotifications,
-          'pushNotifications': _pushNotifications,
-          'projectUpdates': _projectUpdates,
-          'messageNotifications': _messageNotifications,
-        },
       };
 
       await _authService.updateUserProfile(updateData);
@@ -172,7 +154,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
       try {
         await _authService.signOut();
         if (mounted) {
-          // Navigate to login page - you'll need to update this path
+          // Navigate to login page
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/login',
             (route) => false,
@@ -212,7 +194,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Profile Section
           LayoutBuilder(
             builder: (context, constraints) {
@@ -222,32 +204,24 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
                     _buildProfileSection(),
                     const SizedBox(height: 24),
                     _buildSkillsSection(),
-                    const SizedBox(height: 24),
-                    _buildNotificationSection(),
                   ],
                 );
               } else {
-                return Column(
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _buildProfileSection()),
-                        const SizedBox(width: 24),
-                        Expanded(child: _buildSkillsSection()),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildNotificationSection(),
+                    Expanded(child: _buildProfileSection()),
+                    const SizedBox(width: 24),
+                    Expanded(child: _buildSkillsSection()),
                   ],
                 );
               }
             },
           ),
           const SizedBox(height: 24),
-          
-          // Account Actions
-          _buildAccountActions(),
+
+          // Logout Button
+          _buildLogoutSection(),
         ],
       ),
     );
@@ -269,7 +243,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Profile Picture
             Center(
               child: Stack(
@@ -285,8 +259,8 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
                     ),
                     child: Center(
                       child: Text(
-                        _currentUser?.name.isNotEmpty == true 
-                            ? _currentUser!.name[0].toUpperCase() 
+                        _currentUser?.name.isNotEmpty == true
+                            ? _currentUser!.name[0].toUpperCase()
                             : 'F',
                         style: const TextStyle(
                           color: Colors.white,
@@ -316,7 +290,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Form fields
             TextFormField(
               controller: _nameController,
@@ -326,7 +300,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             TextFormField(
               controller: _emailController,
               enabled: false,
@@ -337,7 +311,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             TextFormField(
               controller: _phoneController,
               decoration: const InputDecoration(
@@ -346,7 +320,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             TextFormField(
               controller: _hourlyRateController,
               keyboardType: TextInputType.number,
@@ -356,7 +330,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             TextFormField(
               controller: _bioController,
               maxLines: 3,
@@ -367,13 +341,13 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Save button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving 
+                icon: _isSaving
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -409,7 +383,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Add skill field
             Row(
               children: [
@@ -431,7 +405,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Skills list
             if (_skills.isEmpty)
               const Text(
@@ -459,7 +433,7 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
     );
   }
 
-  Widget _buildNotificationSection() {
+  Widget _buildLogoutSection() {
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -467,148 +441,15 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Notification Preferences',
+              'Account',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
-            
-            _buildNotificationSwitch(
-              'Email Notifications',
-              'Receive updates via email',
-              _emailNotifications,
-              (value) => setState(() => _emailNotifications = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Push Notifications',
-              'Receive push notifications',
-              _pushNotifications,
-              (value) => setState(() => _pushNotifications = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Project Updates',
-              'Get notified about project changes',
-              _projectUpdates,
-              (value) => setState(() => _projectUpdates = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Message Notifications',
-              'Get notified about new messages',
-              _messageNotifications,
-              (value) => setState(() => _messageNotifications = value),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 16),
 
-  Widget _buildNotificationSwitch(
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textGrey,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AppColors.accentCyan,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccountActions() {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Account Actions',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Change Password
-            ListTile(
-              leading: const Icon(Icons.lock_outline, color: AppColors.accentCyan),
-              title: const Text(
-                'Change Password',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Update your account password',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Show change password dialog
-                _showChangePasswordDialog();
-              },
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
-            // Export Data
-            ListTile(
-              leading: const Icon(Icons.download, color: AppColors.accentCyan),
-              title: const Text(
-                'Export Data',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Download your account data',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Export data functionality
-                _showExportDataDialog();
-              },
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
             // Sign Out
             ListTile(
               leading: const Icon(Icons.logout, color: AppColors.dangerRed),
@@ -620,28 +461,9 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
                 'Sign out of your account',
                 style: TextStyle(color: AppColors.textGrey),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  color: AppColors.textGrey, size: 16),
               onTap: _signOut,
-            ),
-            
-            const Divider(color: AppColors.borderColor),
-            
-            // Delete Account
-            ListTile(
-              leading: const Icon(Icons.delete_forever, color: AppColors.dangerRed),
-              title: const Text(
-                'Delete Account',
-                style: TextStyle(color: AppColors.dangerRed),
-              ),
-              subtitle: const Text(
-                'Permanently delete your account',
-                style: TextStyle(color: AppColors.textGrey),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 16),
-              onTap: () {
-                // Show delete account confirmation
-                _showDeleteAccountDialog();
-              },
             ),
           ],
         ),
@@ -663,84 +485,5 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
     setState(() {
       _skills.remove(skill);
     });
-  }
-
-  void _showChangePasswordDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardColor,
-        title: const Text(
-          'Change Password',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'This feature will be implemented soon.',
-          style: TextStyle(color: AppColors.textGrey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showExportDataDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardColor,
-        title: const Text(
-          'Export Data',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'This feature will be implemented soon.',
-          style: TextStyle(color: AppColors.textGrey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardColor,
-        title: const Text(
-          'Delete Account',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'This action cannot be undone. Are you sure you want to delete your account?',
-          style: TextStyle(color: AppColors.textGrey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Implement delete account functionality
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dangerRed,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/chat_model.dart';
@@ -14,6 +16,10 @@ class ChatService {
       final currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('User not authenticated');
 
+      if (_currentUserId.isEmpty) {
+        throw Exception('Current user ID is empty');
+      }
+
       // Generate chat room ID
       final participants = [_currentUserId, otherUserId];
       participants.sort();
@@ -23,13 +29,23 @@ class ChatService {
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
 
       if (!chatDoc.exists) {
+        // Get current user data for name
+        final currentUserDoc = await _firestore.collection('users').doc(_currentUserId).get();
+        final currentUserName = currentUserDoc.exists 
+            ? (currentUserDoc.data()?['name'] ?? currentUser.displayName ?? 'User')
+            : (currentUser.displayName ?? 'User');
+
         // Create new chat room
         final chatRoom = ChatRoom(
           id: chatId,
           participantIds: [_currentUserId, otherUserId],
           participantNames: {
-            _currentUserId: currentUser.displayName ?? 'User',
+            _currentUserId: currentUserName,
             otherUserId: otherUserName,
+          },
+          unreadCount: {
+            _currentUserId: 0,
+            otherUserId: 0,
           },
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -51,12 +67,26 @@ class ChatService {
       final currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('User not authenticated');
 
+      if (_currentUserId.isEmpty) {
+        throw Exception('Current user ID is empty');
+      }
+
+      if (message.trim().isEmpty && type == MessageType.text) {
+        throw Exception('Message cannot be empty');
+      }
+
+      // Get current user name
+      final currentUserDoc = await _firestore.collection('users').doc(_currentUserId).get();
+      final currentUserName = currentUserDoc.exists 
+          ? (currentUserDoc.data()?['name'] ?? currentUser.displayName ?? 'User')
+          : (currentUser.displayName ?? 'User');
+
       final chatMessage = ChatMessage(
         id: '',
         chatId: chatId,
         senderId: _currentUserId,
-        senderName: currentUser.displayName ?? 'User',
-        message: message,
+        senderName: currentUserName,
+        message: message.trim(),
         type: type,
         fileUrl: fileUrl,
         fileName: fileName,
@@ -72,7 +102,7 @@ class ChatService {
 
       // Update chat room with last message
       await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': message,
+        'lastMessage': message.trim(),
         'lastMessageTime': FieldValue.serverTimestamp(),
         'lastMessageSenderId': _currentUserId,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -112,52 +142,97 @@ class ChatService {
 
   // Get messages for a chat
   Stream<List<ChatMessage>> getMessages(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatMessage.fromFirestore(doc))
-            .toList());
+    try {
+      return _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .snapshots()
+          .map((snapshot) {
+            try {
+              return snapshot.docs
+                  .map((doc) => ChatMessage.fromFirestore(doc))
+                  .toList();
+            } catch (e) {
+              print('Error parsing messages: $e');
+              return <ChatMessage>[];
+            }
+          });
+    } catch (e) {
+      print('Error getting messages stream: $e');
+      return Stream.value(<ChatMessage>[]);
+    }
   }
 
   // Get user's chat rooms
   Stream<List<ChatRoom>> getUserChatRooms() {
-    return _firestore
-        .collection('chats')
-        .where('participantIds', arrayContains: _currentUserId)
-        .where('isActive', isEqualTo: true)
-        .orderBy('updatedAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatRoom.fromFirestore(doc))
-            .toList());
+    try {
+      if (_currentUserId.isEmpty) {
+        print('Warning: Current user ID is empty');
+        return Stream.value(<ChatRoom>[]);
+      }
+
+      return _firestore
+          .collection('chats')
+          .where('participantIds', arrayContains: _currentUserId)
+          .where('isActive', isEqualTo: true)
+          .orderBy('updatedAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+            try {
+              return snapshot.docs
+                  .map((doc) {
+                    try {
+                      return ChatRoom.fromFirestore(doc);
+                    } catch (e) {
+                      print('Error parsing chat room ${doc.id}: $e');
+                      return null;
+                    }
+                  })
+                  .where((chatRoom) => chatRoom != null)
+                  .cast<ChatRoom>()
+                  .toList();
+            } catch (e) {
+              print('Error parsing chat rooms: $e');
+              return <ChatRoom>[];
+            }
+          });
+    } catch (e) {
+      print('Error getting chat rooms stream: $e');
+      return Stream.value(<ChatRoom>[]);
+    }
   }
 
   // Mark messages as read
   Future<void> markMessagesAsRead(String chatId) async {
     try {
+      if (_currentUserId.isEmpty) {
+        throw Exception('Current user ID is empty');
+      }
+
       // Update unread count
       await _firestore.collection('chats').doc(chatId).update({
         'unreadCount.$_currentUserId': 0,
       });
 
-      // Mark messages as read
+      // Mark messages as read (batch operation for better performance)
       final unreadMessages = await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
           .where('senderId', isNotEqualTo: _currentUserId)
           .where('isRead', isEqualTo: false)
+          .limit(100) // Limit to avoid large batches
           .get();
 
-      final batch = _firestore.batch();
-      for (var doc in unreadMessages.docs) {
-        batch.update(doc.reference, {'isRead': true});
+      if (unreadMessages.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (var doc in unreadMessages.docs) {
+          batch.update(doc.reference, {'isRead': true});
+        }
+        await batch.commit();
       }
-      await batch.commit();
     } catch (e) {
       throw Exception('Failed to mark messages as read: ${e.toString()}');
     }
@@ -178,6 +253,8 @@ class ChatService {
   // Search messages
   Future<List<ChatMessage>> searchMessages(String chatId, String query) async {
     try {
+      if (query.trim().isEmpty) return [];
+
       final messages = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -187,7 +264,16 @@ class ChatService {
           .get();
 
       return messages.docs
-          .map((doc) => ChatMessage.fromFirestore(doc))
+          .map((doc) {
+            try {
+              return ChatMessage.fromFirestore(doc);
+            } catch (e) {
+              print('Error parsing message in search: $e');
+              return null;
+            }
+          })
+          .where((message) => message != null)
+          .cast<ChatMessage>()
           .where((message) => message.message.toLowerCase().contains(query.toLowerCase()))
           .toList();
     } catch (e) {
@@ -198,6 +284,8 @@ class ChatService {
   // Get unread message count for user
   Future<int> getUnreadMessageCount() async {
     try {
+      if (_currentUserId.isEmpty) return 0;
+
       final chatRooms = await _firestore
           .collection('chats')
           .where('participantIds', arrayContains: _currentUserId)
@@ -206,13 +294,39 @@ class ChatService {
 
       int totalUnread = 0;
       for (var doc in chatRooms.docs) {
-        final chatRoom = ChatRoom.fromFirestore(doc);
-        totalUnread += chatRoom.unreadCount[_currentUserId] ?? 0;
+        try {
+          final chatRoom = ChatRoom.fromFirestore(doc);
+          totalUnread += chatRoom.unreadCount[_currentUserId] ?? 0;
+        } catch (e) {
+          print('Error parsing chat room for unread count: $e');
+        }
       }
 
       return totalUnread;
     } catch (e) {
+      print('Error getting unread message count: $e');
       return 0;
+    }
+  }
+
+  // Check if user is authenticated and has valid ID
+  bool get isUserAuthenticated {
+    return _auth.currentUser != null && _currentUserId.isNotEmpty;
+  }
+
+  // Initialize or refresh authentication state
+  Future<bool> checkAuthState() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Refresh token if needed
+        await user.reload();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error checking auth state: $e');
+      return false;
     }
   }
 }

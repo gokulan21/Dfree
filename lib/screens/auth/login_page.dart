@@ -42,9 +42,11 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // Pass the selected role for validation
       await _authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
+        expectedRole: _selectedRole, // This will validate the role
       );
 
       if (mounted) {
@@ -55,7 +57,14 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorDialog('Login Failed', e.toString());
+        String errorMessage = e.toString();
+        
+        // Clean up the error message
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+        
+        _showErrorDialog('Login Failed', errorMessage);
       }
     } finally {
       if (mounted) {
@@ -72,6 +81,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // Pass the selected role for validation
       await _authService.signInDemo('demo', _selectedRole);
 
       if (mounted) {
@@ -81,7 +91,14 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorDialog('Demo Login Failed', e.toString());
+        String errorMessage = e.toString();
+        
+        // Clean up the error message
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+        
+        _showErrorDialog('Demo Login Failed', errorMessage);
       }
     } finally {
       if (mounted) {
@@ -438,6 +455,43 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Demo Login Button
+                    Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFF00D4FF), width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleDemoLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.play_arrow, color: Color(0xFF00D4FF)),
+                            const SizedBox(width: 8),
+                            _isLoading
+                                ? const LoadingWidget(size: 20, color: Color(0xFF00D4FF))
+                                : const Text(
+                                    'Demo Login',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF00D4FF),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 24),
 
                     // Need Help Section
@@ -471,15 +525,9 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // Navigator.of(context).push(
-                            //   MaterialPageRoute(
-                            //     builder: (context) => const RegisterPage(),
-                            //   ),
-                            // );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Register page not implemented yet'),
-                                backgroundColor: Colors.orange,
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const RegisterPage(),
                               ),
                             );
                           },
@@ -572,9 +620,13 @@ class _LoginPageState extends State<LoginPage> {
                   }
                 } catch (e) {
                   if (mounted) {
+                    String errorMessage = e.toString();
+                    if (errorMessage.startsWith('Exception: ')) {
+                      errorMessage = errorMessage.substring(11);
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(e.toString()),
+                        content: Text(errorMessage),
                         backgroundColor: AppColors.dangerRed,
                       ),
                     );

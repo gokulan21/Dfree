@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../services/project_service.dart';
@@ -240,16 +242,59 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
   }
 
   Widget _buildProjectStats() {
-    final totalProjects = _myProjects.length;
-    final activeProjects = _myProjects.where((p) => p.status == ProjectStatus.inProgress).length;
-    final completedProjects = _myProjects.where((p) => p.status == ProjectStatus.completed).length;
-    final pendingProjects = _myProjects.where((p) => p.status == ProjectStatus.pending).length;
+    // Use filtered projects based on selected filter
+    final filteredProjects = _filteredMyProjects;
+    
+    // Calculate stats based on filtered projects
+    final totalProjects = filteredProjects.length;
+    final activeProjects = filteredProjects.where((p) => p.status == ProjectStatus.inProgress).length;
+    final completedProjects = filteredProjects.where((p) => p.status == ProjectStatus.completed).length;
+    final pendingProjects = filteredProjects.where((p) => p.status == ProjectStatus.pending).length;
+    final cancelledProjects = filteredProjects.where((p) => p.status == ProjectStatus.cancelled).length;
+    final onHoldProjects = filteredProjects.where((p) => p.status == ProjectStatus.onHold).length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount = 2;
         if (constraints.maxWidth > 600) crossAxisCount = 4;
         if (constraints.maxWidth < 400) crossAxisCount = 1;
+
+        // Show different stats based on selected filter
+        List<Widget> statCards = [];
+        
+        if (_selectedFilter == 'all') {
+          // Show all stats when "All" is selected
+          statCards = [
+            _buildStatCard('Total', totalProjects, AppColors.accentCyan),
+            _buildStatCard('Active', activeProjects, AppColors.warningYellow),
+            _buildStatCard('Completed', completedProjects, AppColors.successGreen),
+            _buildStatCard('Pending', pendingProjects, AppColors.textGrey),
+          ];
+        } else {
+          // Show only the total count for specific filters
+          String filterLabel = '';
+          switch (_selectedFilter) {
+            case 'pending':
+              filterLabel = 'Pending';
+              break;
+            case 'inProgress':
+              filterLabel = 'In Progress';
+              break;
+            case 'completed':
+              filterLabel = 'Completed';
+              break;
+            case 'cancelled':
+              filterLabel = 'Cancelled';
+              break;
+            case 'onHold':
+              filterLabel = 'On Hold';
+              break;
+          }
+          
+          statCards = [
+            _buildStatCard(filterLabel, totalProjects, AppColors.accentCyan),
+          ];
+        }
 
         return GridView.count(
           shrinkWrap: true,
@@ -258,12 +303,7 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           childAspectRatio: 2.2,
-          children: [
-            _buildStatCard('Total', totalProjects, AppColors.accentCyan),
-            _buildStatCard('Active', activeProjects, AppColors.warningYellow),
-            _buildStatCard('Completed', completedProjects, AppColors.successGreen),
-            _buildStatCard('Pending', pendingProjects, AppColors.textGrey),
-          ],
+          children: statCards,
         );
       },
     );
