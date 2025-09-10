@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable, avoid_print
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
@@ -16,14 +18,23 @@ class AuthService {
   Future<UserModel?> getCurrentUserData() async {
     try {
       final user = currentUser;
-      if (user == null) return null;
+      if (user == null) {
+        print('No current user found');
+        return null;
+      }
 
+      print('Fetching user data for UID: ${user.uid}');
+      
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (doc.exists) {
+        print('User document found');
         return UserModel.fromFirestore(doc);
+      } else {
+        print('User document does not exist');
+        return null;
       }
-      return null;
     } catch (e) {
+      print('Error getting user data: $e');
       throw Exception('Failed to get user data: ${e.toString()}');
     }
   }
@@ -34,6 +45,7 @@ class AuthService {
       final userData = await getCurrentUserData();
       return userData?.role;
     } catch (e) {
+      print('Error getting user role: $e');
       return null;
     }
   }
@@ -159,15 +171,50 @@ class AuthService {
     }
   }
 
-  // Update user profile
+  // Update user profile - IMPROVED VERSION
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     try {
       final user = currentUser;
-      if (user == null) throw Exception('No user logged in');
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
 
-      data['updatedAt'] = FieldValue.serverTimestamp();
-      await _firestore.collection('users').doc(user.uid).update(data);
+      print('Updating profile for user: ${user.uid}');
+      print('Update data: $data');
+
+      // Check if user document exists first
+      final docRef = _firestore.collection('users').doc(user.uid);
+      final docSnapshot = await docRef.get();
+      
+      if (!docSnapshot.exists) {
+        throw Exception('User document not found. Please contact support.');
+      }
+
+      // Add timestamp
+      final updateData = Map<String, dynamic>.from(data);
+      updateData['updatedAt'] = FieldValue.serverTimestamp();
+
+      // Perform the update
+      await docRef.update(updateData);
+      
+      print('Profile update completed successfully');
+
+      // Update display name if name was changed
+      if (data.containsKey('name') && data['name'] != null) {
+        try {
+          await user.updateDisplayName(data['name']);
+          print('Display name updated successfully');
+        } catch (e) {
+          print('Warning: Could not update display name: $e');
+          // Don't throw error for display name update failure
+        }
+      }
+
+    } on FirebaseException catch (e) {
+      print('Firestore error: ${e.code} - ${e.message}');
+      throw Exception('Database error: ${e.message}');
     } catch (e) {
+      print('Generic error updating profile: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
     }
   }
@@ -253,6 +300,21 @@ class AuthService {
       }
     } catch (e) {
       throw Exception('Demo sign in failed: ${e.toString()}');
+    }
+  }
+
+  // Test connectivity method
+  Future<bool> testFirestoreConnection() async {
+    try {
+      final user = currentUser;
+      if (user == null) return false;
+      
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      print('Firestore connection test successful');
+      return true;
+    } catch (e) {
+      print('Firestore connection test failed: $e');
+      return false;
     }
   }
 }

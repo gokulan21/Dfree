@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+// ignore_for_file: unused_import, avoid_print, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
@@ -28,11 +28,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
   UserModel? _currentUser;
   bool _isLoading = true;
   bool _isSaving = false;
-  
-  // Notification preferences - removed push notifications
-  bool _emailNotifications = true;
-  bool _projectUpdates = true;
-  bool _messageNotifications = true;
 
   @override
   void initState() {
@@ -62,11 +57,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
           _companyController.text = userData.company ?? '';
           _bioController.text = userData.bio ?? '';
           
-          // Load notification preferences - removed push notifications
-          _emailNotifications = userData.preferences['emailNotifications'] ?? true;
-          _projectUpdates = userData.preferences['projectUpdates'] ?? true;
-          _messageNotifications = userData.preferences['messageNotifications'] ?? true;
-          
           _isLoading = false;
         });
       }
@@ -86,6 +76,17 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
   }
 
   Future<void> _saveProfile() async {
+    // Add validation
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Name cannot be empty'),
+          backgroundColor: AppColors.dangerRed,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -96,16 +97,18 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
         'phone': _phoneController.text.trim(),
         'company': _companyController.text.trim(),
         'bio': _bioController.text.trim(),
-        'preferences': {
-          'emailNotifications': _emailNotifications,
-          'projectUpdates': _projectUpdates,
-          'messageNotifications': _messageNotifications,
-        },
       };
+
+      print('Attempting to update profile with data: $updateData'); // Debug log
 
       await _authService.updateUserProfile(updateData);
 
+      print('Profile update successful'); // Debug log
+
       if (mounted) {
+        // Reload user data to reflect changes
+        await _loadUserData();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
@@ -114,6 +117,8 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
         );
       }
     } catch (e) {
+      print('Profile update error: $e'); // Debug log
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -204,29 +209,8 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
           ),
           const SizedBox(height: 24),
           
-          // Profile Section
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 1024) {
-                return Column(
-                  children: [
-                    _buildProfileSection(),
-                    const SizedBox(height: 24),
-                    _buildNotificationSection(),
-                  ],
-                );
-              } else {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildProfileSection()),
-                    const SizedBox(width: 24),
-                    Expanded(child: _buildNotificationSection()),
-                  ],
-                );
-              }
-            },
-          ),
+          // Profile Section - Now takes full width
+          _buildProfileSection(),
           const SizedBox(height: 24),
           
           // Account Actions
@@ -442,95 +426,6 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationSection() {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Notification Preferences',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            _buildNotificationSwitch(
-              'Email Notifications',
-              'Receive updates via email',
-              _emailNotifications,
-              (value) => setState(() => _emailNotifications = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Project Updates',
-              'Get notified about project progress',
-              _projectUpdates,
-              (value) => setState(() => _projectUpdates = value),
-            ),
-            
-            _buildNotificationSwitch(
-              'Message Notifications',
-              'Get notified about new messages',
-              _messageNotifications,
-              (value) => setState(() => _messageNotifications = value),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationSwitch(
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textGrey,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AppColors.accentCyan,
-            activeTrackColor: AppColors.accentCyan.withOpacity(0.3),
-            inactiveThumbColor: AppColors.textGrey,
-            inactiveTrackColor: AppColors.borderColor,
-          ),
-        ],
       ),
     );
   }
