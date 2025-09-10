@@ -30,23 +30,37 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return ChatMessage(
-      id: doc.id,
-      chatId: data['chatId'] ?? '',
-      senderId: data['senderId'] ?? '',
-      senderName: data['senderName'] ?? '',
-      message: data['message'] ?? '',
-      type: MessageType.values.firstWhere(
-        (e) => e.name == data['type'],
-        orElse: () => MessageType.text,
-      ),
-      fileUrl: data['fileUrl'],
-      fileName: data['fileName'],
-      timestamp: (data['timestamp'] as Timestamp).toDate(),
-      isRead: data['isRead'] ?? false,
-      replyToId: data['replyToId'],
-    );
+    try {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      return ChatMessage(
+        id: doc.id,
+        chatId: data['chatId'] ?? '',
+        senderId: data['senderId'] ?? '',
+        senderName: data['senderName'] ?? '',
+        message: data['message'] ?? '',
+        type: MessageType.values.firstWhere(
+          (e) => e.name == data['type'],
+          orElse: () => MessageType.text,
+        ),
+        fileUrl: data['fileUrl'],
+        fileName: data['fileName'],
+        timestamp: data['timestamp'] != null 
+            ? (data['timestamp'] as Timestamp).toDate()
+            : DateTime.now(),
+        isRead: data['isRead'] ?? false,
+        replyToId: data['replyToId'],
+      );
+    } catch (e) {
+      // Return a fallback message if parsing fails
+      return ChatMessage(
+        id: doc.id,
+        chatId: '',
+        senderId: '',
+        senderName: 'Unknown',
+        message: 'Message could not be loaded',
+        timestamp: DateTime.now(),
+      );
+    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -93,20 +107,56 @@ class ChatRoom {
   });
 
   factory ChatRoom.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return ChatRoom(
-      id: doc.id,
-      participantIds: List<String>.from(data['participantIds'] ?? []),
-      participantNames: Map<String, String>.from(data['participantNames'] ?? {}),
-      lastMessage: data['lastMessage'],
-      lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate(),
-      lastMessageSenderId: data['lastMessageSenderId'],
-      unreadCount: Map<String, int>.from(data['unreadCount'] ?? {}),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      isActive: data['isActive'] ?? true,
-      projectId: data['projectId'],
-    );
+    try {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      
+      // Safely parse participant names
+      Map<String, String> participantNames = {};
+      if (data['participantNames'] is Map) {
+        final names = data['participantNames'] as Map;
+        names.forEach((key, value) {
+          participantNames[key.toString()] = value?.toString() ?? 'Unknown User';
+        });
+      }
+
+      // Safely parse unread count
+      Map<String, int> unreadCount = {};
+      if (data['unreadCount'] is Map) {
+        final counts = data['unreadCount'] as Map;
+        counts.forEach((key, value) {
+          unreadCount[key.toString()] = (value is int) ? value : 0;
+        });
+      }
+
+      return ChatRoom(
+        id: doc.id,
+        participantIds: List<String>.from(data['participantIds'] ?? []),
+        participantNames: participantNames,
+        lastMessage: data['lastMessage']?.toString(),
+        lastMessageTime: data['lastMessageTime'] != null
+            ? (data['lastMessageTime'] as Timestamp).toDate()
+            : null,
+        lastMessageSenderId: data['lastMessageSenderId']?.toString(),
+        unreadCount: unreadCount,
+        createdAt: data['createdAt'] != null
+            ? (data['createdAt'] as Timestamp).toDate()
+            : DateTime.now(),
+        updatedAt: data['updatedAt'] != null
+            ? (data['updatedAt'] as Timestamp).toDate()
+            : DateTime.now(),
+        isActive: data['isActive'] ?? true,
+        projectId: data['projectId']?.toString(),
+      );
+    } catch (e) {
+      // Return a fallback chat room if parsing fails
+      return ChatRoom(
+        id: doc.id,
+        participantIds: [],
+        participantNames: {},
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -114,7 +164,9 @@ class ChatRoom {
       'participantIds': participantIds,
       'participantNames': participantNames,
       'lastMessage': lastMessage,
-      'lastMessageTime': lastMessageTime != null ? Timestamp.fromDate(lastMessageTime!) : null,
+      'lastMessageTime': lastMessageTime != null 
+          ? Timestamp.fromDate(lastMessageTime!) 
+          : null,
       'lastMessageSenderId': lastMessageSenderId,
       'unreadCount': unreadCount,
       'createdAt': Timestamp.fromDate(createdAt),

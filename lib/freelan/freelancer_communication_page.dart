@@ -156,48 +156,54 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
 
   Widget _buildErrorState() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.dangerRed,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Oops! Something went wrong',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.dangerRed,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage ?? 'Unknown error occurred',
-              style: const TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 14,
+              const SizedBox(height: 16),
+              const Text(
+                'Oops! Something went wrong',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _initializeChat,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentCyan,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  _errorMessage ?? 'Unknown error occurred',
+                  style: const TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              child: const Text('Retry'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _initializeChat,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentCyan,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -241,7 +247,6 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     return CustomCard(
       padding: EdgeInsets.zero,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Container(
@@ -254,13 +259,17 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                 ),
               ),
             ),
-            child: const Text(
-              'Messages',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            child: const Row(
+              children: [
+                Text(
+                  'Messages',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -312,35 +321,37 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     
     if (filteredChatRooms.isEmpty && _chatRooms.isEmpty) {
       return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 64,
-                color: AppColors.textGrey,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'No conversations yet',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Start a conversation with a client to see it here.',
-                style: TextStyle(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 64,
                   color: AppColors.textGrey,
-                  fontSize: 14,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                SizedBox(height: 16),
+                Text(
+                  'No conversations yet',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Start a conversation with a client to see it here.',
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -348,41 +359,43 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
 
     if (filteredChatRooms.isEmpty && _searchQuery.isNotEmpty) {
       return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.search_off,
-                size: 64,
-                color: AppColors.textGrey,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'No results found',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Try searching with different keywords.',
-                style: TextStyle(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off,
+                  size: 64,
                   color: AppColors.textGrey,
-                  fontSize: 14,
                 ),
-              ),
-            ],
+                SizedBox(height: 16),
+                Text(
+                  'No results found',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Try searching with different keywords.',
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       itemCount: filteredChatRooms.length,
       itemBuilder: (context, index) {
         final chatRoom = filteredChatRooms[index];
@@ -457,6 +470,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -469,9 +483,11 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                                 fontSize: 16,
                               ),
                               overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
-                          if (chatRoom.lastMessageTime != null)
+                          if (chatRoom.lastMessageTime != null) ...[
+                            const SizedBox(width: 8),
                             Text(
                               chatRoom.lastMessageTime!.formatTime,
                               style: const TextStyle(
@@ -479,6 +495,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                                 fontSize: 12,
                               ),
                             ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -495,9 +512,9 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (unreadCount > 0)
+                          if (unreadCount > 0) ...[
+                            const SizedBox(width: 8),
                             Container(
-                              margin: const EdgeInsets.only(left: 8),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6, 
                                 vertical: 2,
@@ -521,6 +538,7 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
                                 ),
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ],
@@ -538,33 +556,39 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     return Container(
       color: AppColors.bgPrimary,
       child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 80,
-              color: AppColors.textGrey,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 80,
+                  color: AppColors.textGrey,
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Select a conversation',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Choose a conversation from the list to start messaging',
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            SizedBox(height: 24),
-            Text(
-              'Select a conversation',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Choose a conversation from the list to start messaging',
-              style: TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       ),
     );

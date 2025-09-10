@@ -29,13 +29,15 @@ class LoadingWidget extends StatelessWidget {
         ),
         if (message != null) ...[
           const SizedBox(height: 16),
-          Text(
-            message!,
-            style: const TextStyle(
-              color: AppColors.textGrey,
-              fontSize: 14,
+          Flexible(
+            child: Text(
+              message!,
+              style: const TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ],
@@ -187,18 +189,28 @@ class CardSkeleton extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              const SkeletonLoader(width: 40, height: 40, borderRadius: BorderRadius.all(Radius.circular(20))),
+              const SkeletonLoader(
+                width: 40, 
+                height: 40, 
+                borderRadius: BorderRadius.all(Radius.circular(20))
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const SkeletonLoader(width: 120, height: 16),
                     const SizedBox(height: 4),
-                    SkeletonLoader(width: 80, height: 12, borderRadius: BorderRadius.circular(6)),
+                    SkeletonLoader(
+                      width: 80, 
+                      height: 12, 
+                      borderRadius: BorderRadius.circular(6)
+                    ),
                   ],
                 ),
               ),

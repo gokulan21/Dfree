@@ -14,7 +14,7 @@ class AuthService {
   // Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Get current user data
+  // Get current user data with better error handling
   Future<UserModel?> getCurrentUserData() async {
     try {
       final user = currentUser;
@@ -26,11 +26,11 @@ class AuthService {
       print('Fetching user data for UID: ${user.uid}');
       
       final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (doc.exists) {
+      if (doc.exists && doc.data() != null) {
         print('User document found');
         return UserModel.fromFirestore(doc);
       } else {
-        print('User document does not exist');
+        print('User document does not exist or is empty');
         return null;
       }
     } catch (e) {
@@ -58,7 +58,7 @@ class AuthService {
   }) async {
     try {
       final result = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
@@ -69,16 +69,16 @@ class AuthService {
             .doc(result.user!.uid)
             .get();
 
-        if (!userDoc.exists) {
+        if (!userDoc.exists || userDoc.data() == null) {
           // Sign out the user since profile doesn't exist
           await _auth.signOut();
           throw Exception('User profile not found. Please contact support.');
         }
 
-        final userData = userDoc.data();
-        final userRole = userData?['role'] as String?;
+        final userData = userDoc.data()!;
+        final userRole = userData['role'] as String?;
 
-        if (userRole == null) {
+        if (userRole == null || userRole.isEmpty) {
           await _auth.signOut();
           throw Exception('User role not found. Please contact support.');
         }
@@ -98,9 +98,14 @@ class AuthService {
         });
       } else if (result.user != null) {
         // Update last login for normal sign in without role validation
-        await _firestore.collection('users').doc(result.user!.uid).update({
-          'lastLogin': FieldValue.serverTimestamp(),
-        });
+        try {
+          await _firestore.collection('users').doc(result.user!.uid).update({
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          print('Warning: Could not update last login: $e');
+          // Don't fail the entire sign in for this
+        }
       }
 
       return result;
@@ -127,8 +132,12 @@ class AuthService {
     String? company,
   }) async {
     try {
+      if (email.trim().isEmpty || password.isEmpty || name.trim().isEmpty || role.trim().isEmpty) {
+        throw Exception('All required fields must be filled');
+      }
+
       final result = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
@@ -136,11 +145,11 @@ class AuthService {
         // Create user document
         final userModel = UserModel(
           id: result.user!.uid,
-          email: email,
-          name: name,
-          role: role,
-          phone: phone,
-          company: company,
+          email: email.trim().toLowerCase(),
+          name: name.trim(),
+          role: role.toLowerCase(),
+          phone: phone?.trim(),
+          company: company?.trim(),
           createdAt: DateTime.now(),
           lastLogin: DateTime.now(),
         );
@@ -151,7 +160,12 @@ class AuthService {
             .set(userModel.toFirestore());
 
         // Update display name
-        await result.user!.updateDisplayName(name);
+        try {
+          await result.user!.updateDisplayName(name.trim());
+        } catch (e) {
+          print('Warning: Could not update display name: $e');
+          // Don't fail the entire registration for this
+        }
       }
 
       return result;
@@ -171,7 +185,7 @@ class AuthService {
     }
   }
 
-  // Update user profile - IMPROVED VERSION
+  // Update user profile - IMPROVED VERSION with better validation
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     try {
       final user = currentUser;
@@ -179,8 +193,22 @@ class AuthService {
         throw Exception('No user logged in');
       }
 
+      // Validate and clean data
+      final cleanData = <String, dynamic>{};
+      data.forEach((key, value) {
+        if (value != null && value.toString().trim().isNotEmpty) {
+          if (key == 'email') {
+            cleanData[key] = value.toString().trim().toLowerCase();
+          } else if (key == 'name' || key == 'company' || key == 'phone') {
+            cleanData[key] = value.toString().trim();
+          } else {
+            cleanData[key] = value;
+          }
+        }
+      });
+
       print('Updating profile for user: ${user.uid}');
-      print('Update data: $data');
+      print('Update data: $cleanData');
 
       // Check if user document exists first
       final docRef = _firestore.collection('users').doc(user.uid);
@@ -191,18 +219,17 @@ class AuthService {
       }
 
       // Add timestamp
-      final updateData = Map<String, dynamic>.from(data);
-      updateData['updatedAt'] = FieldValue.serverTimestamp();
+      cleanData['updatedAt'] = FieldValue.serverTimestamp();
 
       // Perform the update
-      await docRef.update(updateData);
+      await docRef.update(cleanData);
       
       print('Profile update completed successfully');
 
       // Update display name if name was changed
-      if (data.containsKey('name') && data['name'] != null) {
+      if (cleanData.containsKey('name')) {
         try {
-          await user.updateDisplayName(data['name']);
+          await user.updateDisplayName(cleanData['name']);
           print('Display name updated successfully');
         } catch (e) {
           print('Warning: Could not update display name: $e');
@@ -212,7 +239,7 @@ class AuthService {
 
     } on FirebaseException catch (e) {
       print('Firestore error: ${e.code} - ${e.message}');
-      throw Exception('Database error: ${e.message}');
+      throw Exception('Database error: ${e.message ?? 'Unknown database error'}');
     } catch (e) {
       print('Generic error updating profile: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
@@ -222,7 +249,10 @@ class AuthService {
   // Reset password
   Future<void> resetPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      if (email.trim().isEmpty) {
+        throw Exception('Email address is required');
+      }
+      await _auth.sendPasswordResetEmail(email: email.trim());
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
@@ -236,8 +266,12 @@ class AuthService {
       final user = currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      // Delete user document
-      await _firestore.collection('users').doc(user.uid).delete();
+      // Delete user document first
+      try {
+        await _firestore.collection('users').doc(user.uid).delete();
+      } catch (e) {
+        print('Warning: Could not delete user document: $e');
+      }
 
       // Delete auth account
       await user.delete();
@@ -246,7 +280,7 @@ class AuthService {
     }
   }
 
-  // Handle auth exceptions
+  // Handle auth exceptions with better error messages
   Exception _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
@@ -265,35 +299,45 @@ class AuthService {
         return Exception('Too many failed attempts. Please try again later.');
       case 'invalid-credential':
         return Exception('Invalid email or password. Please check your credentials.');
+      case 'network-request-failed':
+        return Exception('Network error. Please check your connection and try again.');
+      case 'operation-not-allowed':
+        return Exception('This operation is not allowed. Please contact support.');
       default:
-        return Exception('Authentication error: ${e.message}');
+        return Exception('Authentication error: ${e.message ?? 'Unknown error'}');
     }
   }
 
   // Demo sign in method (for testing) with role validation
   Future<UserCredential> signInDemo(String username, String expectedRole) async {
     try {
-      String email = '${username.toLowerCase()}@${expectedRole.toLowerCase()}.demo';
+      if (username.trim().isEmpty || expectedRole.trim().isEmpty) {
+        throw Exception('Username and role are required');
+      }
+
+      String email = '${username.toLowerCase().trim()}@${expectedRole.toLowerCase()}.demo';
       String password = 'demo123';
 
       try {
         return await signInWithEmailAndPassword(
           email, 
           password, 
-          expectedRole: expectedRole,
+          expectedRole: expectedRole.toLowerCase(),
         );
       } on Exception catch (e) {
         if (e.toString().contains('No account found') || 
             e.toString().contains('user-not-found')) {
           // Create demo account with proper role name formatting
-          String displayName = expectedRole == 'client' ? 'Client Demo User' : 'Freelancer Demo User';
+          String displayName = expectedRole.toLowerCase() == 'client' 
+              ? 'Client Demo User' 
+              : 'Freelancer Demo User';
           
           return await createUserWithEmailAndPassword(
             email: email,
             password: password,
             name: displayName,
-            role: expectedRole,
-            company: expectedRole == 'client' ? 'Demo Company' : null,
+            role: expectedRole.toLowerCase(),
+            company: expectedRole.toLowerCase() == 'client' ? 'Demo Company' : null,
           );
         }
         rethrow;
@@ -309,11 +353,34 @@ class AuthService {
       final user = currentUser;
       if (user == null) return false;
       
-      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get()
+          .timeout(const Duration(seconds: 10));
+      
       print('Firestore connection test successful');
       return true;
     } catch (e) {
       print('Firestore connection test failed: $e');
+      return false;
+    }
+  }
+
+  // Validate user session
+  Future<bool> validateUserSession() async {
+    try {
+      final user = currentUser;
+      if (user == null) return false;
+
+      // Reload user to get fresh data
+      await user.reload();
+      
+      // Check if user document still exists
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      return doc.exists && doc.data() != null;
+    } catch (e) {
+      print('Session validation failed: $e');
       return false;
     }
   }

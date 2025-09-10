@@ -34,19 +34,24 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Chat Header
-        _buildChatHeader(),
-        
-        // Messages List
-        Expanded(
-          child: _buildMessagesList(),
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Chat Header
+            _buildChatHeader(),
+            
+            // Messages List
+            Expanded(
+              child: _buildMessagesList(),
+            ),
+            
+            // Message Input
+            _buildMessageInput(),
+          ],
         ),
-        
-        // Message Input
-        _buildMessageInput(),
-      ],
+      ),
     );
   }
 
@@ -59,7 +64,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     final otherParticipantName = widget.chatRoom.participantNames[otherParticipantId] ?? 'Unknown';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.cardColor,
         border: Border(
@@ -75,6 +80,8 @@ class _ChatWidgetState extends State<ChatWidget> {
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: widget.onBack,
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
             ),
             const SizedBox(width: 8),
           ],
@@ -102,6 +109,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   otherParticipantName,
@@ -110,6 +118,8 @@ class _ChatWidgetState extends State<ChatWidget> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 const Text(
                   'Online',
@@ -126,6 +136,8 @@ class _ChatWidgetState extends State<ChatWidget> {
             onPressed: () {
               // Show chat options
             },
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
           ),
         ],
       ),
@@ -142,9 +154,34 @@ class _ChatWidgetState extends State<ChatWidget> {
 
         if (snapshot.hasError) {
           return Center(
-            child: Text(
-              'Error loading messages: ${snapshot.error}',
-              style: const TextStyle(color: AppColors.dangerRed),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: AppColors.dangerRed,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading messages',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    snapshot.error.toString(),
+                    style: const TextStyle(color: AppColors.textGrey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -168,6 +205,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                     color: AppColors.textGrey,
                     fontSize: 16,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -187,7 +225,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
         return ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final message = messages[index];
@@ -203,7 +241,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     final isMe = message.senderId == currentUserId;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -234,6 +272,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           Flexible(
             child: Column(
               crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -308,47 +347,57 @@ class _ChatWidgetState extends State<ChatWidget> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.attach_file, color: AppColors.textGrey),
-            onPressed: () {
-              // Handle file attachment
-            },
-          ),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                hintStyle: const TextStyle(color: AppColors.textGrey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.attach_file, color: AppColors.textGrey),
+              onPressed: () {
+                // Handle file attachment
+              },
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: const TextStyle(color: AppColors.textGrey),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.bgSecondary,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  isDense: true,
                 ),
-                filled: true,
-                fillColor: AppColors.bgSecondary,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                maxLines: null,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendMessage(),
               ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.accentCyan, AppColors.accentPink],
+            const SizedBox(width: 8),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.accentCyan, AppColors.accentPink],
+                ),
+                shape: BoxShape.circle,
               ),
-              shape: BoxShape.circle,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: _sendMessage,
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
+              ),
             ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendMessage,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -367,6 +416,11 @@ class _ChatWidgetState extends State<ChatWidget> {
           SnackBar(
             content: Text('Failed to send message: ${e.toString()}'),
             backgroundColor: AppColors.dangerRed,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
       }

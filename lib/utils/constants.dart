@@ -132,44 +132,65 @@ extension StringExtension on String {
   }
 }
 
-// Add this to your constants.dart file in the DateTimeExtension
 extension DateTimeExtension on DateTime {
   String get timeAgo {
-    final now = DateTime.now();
-    final difference = now.difference(this);
+    try {
+      final now = DateTime.now();
+      final difference = now.difference(this);
 
-    if (difference.inDays > 365) {
-      return '${(difference.inDays / 365).floor()} year${difference.inDays > 730 ? 's' : ''} ago';
-    } else if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} month${difference.inDays > 60 ? 's' : ''} ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
+      if (difference.inDays > 365) {
+        final years = (difference.inDays / 365).floor();
+        return '$years year${years > 1 ? 's' : ''} ago';
+      } else if (difference.inDays > 30) {
+        final months = (difference.inDays / 30).floor();
+        return '$months month${months > 1 ? 's' : ''} ago';
+      } else if (difference.inDays > 0) {
+        return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Unknown time';
     }
   }
   
   String get formatDate {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[month - 1]} $day, $year';
+    try {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      
+      if (month < 1 || month > 12) return 'Invalid date';
+      
+      return '${months[month - 1]} $day, $year';
+    } catch (e) {
+      return 'Invalid date';
+    }
   }
   
   String get formatDateTime {
-    return '${formatDate} at ${formatTime}';
+    try {
+      return '${formatDate} at ${formatTime}';
+    } catch (e) {
+      return 'Invalid date time';
+    }
   }
   
   String get formatTime {
-    final hour = this.hour;
-    final minute = this.minute;
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+    try {
+      final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final hourStr = displayHour.toString().padLeft(2, '0');
+      final minuteStr = minute.toString().padLeft(2, '0');
+      
+      return '$hourStr:$minuteStr $period';
+    } catch (e) {
+      return 'Invalid time';
+    }
   }
 }
