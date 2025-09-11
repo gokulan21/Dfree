@@ -51,60 +51,52 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
     }
   }
 
+  // Safe getter methods to prevent null and zero division errors
+  int get _totalProjects => (_metrics['totalProjects'] as num?)?.toInt() ?? 0;
+  int get _activeProjects => (_metrics['activeProjects'] as num?)?.toInt() ?? 0;
+  int get _completedProjects => (_metrics['completedProjects'] as num?)?.toInt() ?? 0;
+  double get _totalEarnings => (_metrics['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+  double get _averageRating => (_metrics['averageRating'] as num?)?.toDouble() ?? 0.0;
+  int get _pendingProjects => _totalProjects - _activeProjects - _completedProjects;
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: LoadingWidget());
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          const Text(
-            'Performance Analytics',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              const Text(
+                'Performance Analytics',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Key Metrics
+              _buildKeyMetrics(),
+              const SizedBox(height: 24),
+              
+              // Project Status Chart (Full Width)
+              _buildProjectStatusChart(),
+              const SizedBox(height: 24),
+              
+              // Performance Overview
+              _buildPerformanceOverview(),
+              const SizedBox(height: 16), // Bottom padding
+            ],
           ),
-          const SizedBox(height: 24),
-          
-          // Key Metrics
-          _buildKeyMetrics(),
-          const SizedBox(height: 32),
-          
-          // Charts Section
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 1024) {
-                return Column(
-                  children: [
-                    _buildProjectStatusChart(),
-                    const SizedBox(height: 24),
-                    _buildEarningsChart(),
-                  ],
-                );
-              } else {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildProjectStatusChart()),
-                    const SizedBox(width: 24),
-                    Expanded(child: _buildEarningsChart()),
-                  ],
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 32),
-          
-          // Performance Overview
-          _buildPerformanceOverview(),
-        ],
+        ),
       ),
     );
   }
@@ -116,38 +108,41 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
         if (constraints.maxWidth < 768) crossAxisCount = 2;
         if (constraints.maxWidth < 480) crossAxisCount = 1;
         
+        double childAspectRatio = 1.2;
+        if (constraints.maxWidth < 480) childAspectRatio = 2.0;
+        
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: childAspectRatio,
           children: [
             _buildMetricCard(
               'Total Projects',
-              _metrics['totalProjects']?.toString() ?? '0',
+              _totalProjects.toString(),
               Icons.folder_outlined,
               AppColors.accentCyan,
-              '${_getProjectGrowth()}% from last month',
+              '${_getProjectGrowth().toStringAsFixed(1)}% from last month',
             ),
             _buildMetricCard(
               'Active Projects',
-              _metrics['activeProjects']?.toString() ?? '0',
+              _activeProjects.toString(),
               Icons.work_outline,
               AppColors.warningYellow,
               'Currently working on',
             ),
             _buildMetricCard(
               'Total Earnings',
-              '\$${(_metrics['totalEarnings'] ?? 0.0).toStringAsFixed(0)}',
+              '\$${_totalEarnings.toStringAsFixed(0)}',
               Icons.attach_money,
               AppColors.successGreen,
               'Lifetime earnings',
             ),
             _buildMetricCard(
               'Avg. Rating',
-              (_metrics['averageRating'] ?? 0.0).toStringAsFixed(1),
+              _averageRating.toStringAsFixed(1),
               Icons.star,
               AppColors.accentPink,
               'Client satisfaction',
@@ -161,38 +156,42 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
   Widget _buildMetricCard(String title, String value, IconData icon, Color color, String subtitle) {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: color, size: 24),
+                Icon(icon, color: color, size: 20),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Live',
                     style: TextStyle(
                       color: color,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-            const Spacer(),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+            const SizedBox(height: 8),
+            Flexible(
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 4),
@@ -200,16 +199,21 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
               title,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 12,
+            Flexible(
+              child: Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.textGrey,
+                  fontSize: 10,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
               ),
             ),
           ],
@@ -221,29 +225,42 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
   Widget _buildProjectStatusChart() {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'Project Status Distribution',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 200,
-              child: PieChart(
-                PieChartData(
-                  sections: _getPieChartSections(),
-                  centerSpaceRadius: 50,
-                  sectionsSpace: 2,
+            const SizedBox(height: 20),
+            _totalProjects > 0 
+              ? SizedBox(
+                  height: 200,
+                  child: PieChart(
+                    PieChartData(
+                      sections: _getPieChartSections(),
+                      centerSpaceRadius: 50,
+                      sectionsSpace: 2,
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 200,
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'No projects data available',
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-              ),
-            ),
             const SizedBox(height: 16),
             _buildChartLegend(),
           ],
@@ -253,132 +270,108 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
   }
 
   List<PieChartSectionData> _getPieChartSections() {
-    final total = _metrics['totalProjects'] ?? 1;
-    final active = _metrics['activeProjects'] ?? 0;
-    final completed = _metrics['completedProjects'] ?? 0;
-    final pending = total - active - completed;
+    if (_totalProjects == 0) return [];
     
-    return [
-      PieChartSectionData(
-        value: (active / total * 100),
+    List<PieChartSectionData> sections = [];
+    
+    if (_activeProjects > 0) {
+      double percentage = (_activeProjects / _totalProjects) * 100;
+      sections.add(PieChartSectionData(
+        value: percentage,
         color: AppColors.warningYellow,
-        title: '${(active / total * 100).toInt()}%',
+        title: '${percentage.toInt()}%',
         radius: 60,
         titleStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-      ),
-      PieChartSectionData(
-        value: (completed / total * 100),
+      ));
+    }
+    
+    if (_completedProjects > 0) {
+      double percentage = (_completedProjects / _totalProjects) * 100;
+      sections.add(PieChartSectionData(
+        value: percentage,
         color: AppColors.successGreen,
-        title: '${(completed / total * 100).toInt()}%',
+        title: '${percentage.toInt()}%',
         radius: 60,
         titleStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-      ),
-      if (pending > 0)
-        PieChartSectionData(
-          value: (pending / total * 100),
-          color: AppColors.accentCyan,
-          title: '${(pending / total * 100).toInt()}%',
-          radius: 60,
-          titleStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+      ));
+    }
+    
+    if (_pendingProjects > 0) {
+      double percentage = (_pendingProjects / _totalProjects) * 100;
+      sections.add(PieChartSectionData(
+        value: percentage,
+        color: AppColors.accentCyan,
+        title: '${percentage.toInt()}%',
+        radius: 60,
+        titleStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
-    ];
+      ));
+    }
+    
+    // If no sections, add a default one
+    if (sections.isEmpty) {
+      sections.add(PieChartSectionData(
+        value: 100,
+        color: AppColors.textGrey,
+        title: '0%',
+        radius: 60,
+        titleStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ));
+    }
+    
+    return sections;
   }
 
   Widget _buildChartLegend() {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildLegendItem('Active', AppColors.warningYellow, _metrics['activeProjects'] ?? 0),
-        _buildLegendItem('Completed', AppColors.successGreen, _metrics['completedProjects'] ?? 0),
-        _buildLegendItem('Pending', AppColors.accentCyan, 
-          (_metrics['totalProjects'] ?? 0) - (_metrics['activeProjects'] ?? 0) - (_metrics['completedProjects'] ?? 0)),
+        _buildLegendItem('Active', AppColors.warningYellow, _activeProjects),
+        _buildLegendItem('Completed', AppColors.successGreen, _completedProjects),
+        _buildLegendItem('Pending', AppColors.accentCyan, _pendingProjects),
       ],
     );
   }
 
   Widget _buildLegendItem(String label, Color color, int count) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label ($count)',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEarningsChart() {
-    return CustomCard(
+    return Flexible(
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Monthly Earnings',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(show: false),
-                  titlesData: const FlTitlesData(show: false),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: _getEarningsSpots(),
-                      isCurved: true,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.accentCyan, AppColors.accentPink],
-                      ),
-                      barWidth: 3,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.accentCyan.withOpacity(0.3),
-                            AppColors.accentPink.withOpacity(0.1),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ],
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '$label ($count)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -387,62 +380,86 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
     );
   }
 
-  List<FlSpot> _getEarningsSpots() {
-    // Mock data - replace with actual earnings data
-    return const [
-      FlSpot(0, 1000),
-      FlSpot(1, 1500),
-      FlSpot(2, 1200),
-      FlSpot(3, 1800),
-      FlSpot(4, 2200),
-      FlSpot(5, 2000),
-    ];
-  }
-
   Widget _buildPerformanceOverview() {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'Performance Overview',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPerformanceMetric(
-                    'Success Rate',
-                    '${_getSuccessRate()}%',
-                    AppColors.successGreen,
-                    Icons.check_circle_outline,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPerformanceMetric(
-                    'Avg. Project Duration',
-                    '${_getAvgDuration()} days',
-                    AppColors.accentCyan,
-                    Icons.schedule,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPerformanceMetric(
-                    'Client Retention',
-                    '${_getClientRetention()}%',
-                    AppColors.accentPink,
-                    Icons.people,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 600) {
+                  return Column(
+                    children: [
+                      _buildPerformanceMetric(
+                        'Success Rate',
+                        '${_getSuccessRate().toStringAsFixed(1)}%',
+                        AppColors.successGreen,
+                        Icons.check_circle_outline,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPerformanceMetric(
+                        'Avg. Project Duration',
+                        '${_getAvgDuration()} days',
+                        AppColors.accentCyan,
+                        Icons.schedule,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPerformanceMetric(
+                        'Client Retention',
+                        '${_getClientRetention().toStringAsFixed(1)}%',
+                        AppColors.accentPink,
+                        Icons.people,
+                      ),
+                    ],
+                  );
+                } else {
+                  return IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildPerformanceMetric(
+                            'Success Rate',
+                            '${_getSuccessRate().toStringAsFixed(1)}%',
+                            AppColors.successGreen,
+                            Icons.check_circle_outline,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildPerformanceMetric(
+                            'Avg. Project Duration',
+                            '${_getAvgDuration()} days',
+                            AppColors.accentCyan,
+                            Icons.schedule,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildPerformanceMetric(
+                            'Client Retention',
+                            '${_getClientRetention().toStringAsFixed(1)}%',
+                            AppColors.accentPink,
+                            Icons.people,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -453,13 +470,13 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
   Widget _buildPerformanceMetric(String title, String value, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 8),
@@ -467,9 +484,10 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
             value,
             style: TextStyle(
               color: color,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
@@ -479,6 +497,8 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
               fontSize: 12,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -486,21 +506,19 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
   }
 
   double _getProjectGrowth() {
-    return 25.0; // Placeholder
+    return 25.0; // Placeholder - implement actual calculation
   }
 
   double _getSuccessRate() {
-    final total = _metrics['totalProjects'] ?? 0;
-    final completed = _metrics['completedProjects'] ?? 0;
-    if (total == 0) return 0.0;
-    return (completed / total * 100);
+    if (_totalProjects == 0) return 0.0;
+    return (_completedProjects / _totalProjects) * 100;
   }
 
   int _getAvgDuration() {
-    return 21; // Placeholder
+    return 21; // Placeholder - implement actual calculation
   }
 
   double _getClientRetention() {
-    return 85.0; // Placeholder
+    return 85.0; // Placeholder - implement actual calculation
   }
 }
