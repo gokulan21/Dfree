@@ -45,15 +45,28 @@ class _ClientHomePageState extends State<ClientHomePage> {
         final projectsSnapshot = await projectsStream.first;
         final clientProjects = projectsSnapshot.toList();
         
+        // Sort projects by creation date (most recent first) and take only 3
+        clientProjects.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
         // Load top freelancers
         final freelancersStream = _firestoreService.getFreelancers();
         final freelancersSnapshot = await freelancersStream.first;
         
+        // Sort freelancers by rating and completed projects, then take only 3
+        final sortedFreelancers = freelancersSnapshot.toList();
+        sortedFreelancers.sort((a, b) {
+          // First sort by rating (descending)
+          int ratingCompare = b.rating.compareTo(a.rating);
+          if (ratingCompare != 0) return ratingCompare;
+          // If ratings are equal, sort by completed projects (descending)
+          return b.completedProjects.compareTo(a.completedProjects);
+        });
+        
         if (mounted) {
           setState(() {
             _dashboardMetrics = metrics;
-            _recentProjects = clientProjects.take(5).toList();
-            _topFreelancers = freelancersSnapshot.take(4).toList();
+            _recentProjects = clientProjects.take(3).toList();
+            _topFreelancers = sortedFreelancers.take(3).toList();
             _isLoading = false;
           });
         }
@@ -71,6 +84,26 @@ class _ClientHomePageState extends State<ClientHomePage> {
         );
       }
     }
+  }
+
+  void _navigateToAllProjects() {
+    // Navigate to all projects page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AllProjectsPage(),
+      ),
+    );
+  }
+
+  void _navigateToAllFreelancers() {
+    // Navigate to all freelancers page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AllFreelancersPage(),
+      ),
+    );
   }
 
   @override
@@ -166,6 +199,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
       ),
     );
   }
+  
   Widget _buildMetricsSection() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -286,9 +320,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // Navigate to projects page
-                  },
+                  onPressed: _navigateToAllProjects,
                   child: const Text(
                     'View All',
                     style: TextStyle(fontSize: 12),
@@ -319,6 +351,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
                     project: _recentProjects[index],
                     onTap: () {
                       // Navigate to project detail
+                      _navigateToProjectDetail(_recentProjects[index]);
                     },
                   );
                 },
@@ -352,9 +385,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // Navigate to freelancers page
-                  },
+                  onPressed: _navigateToAllFreelancers,
                   child: const Text(
                     'View All',
                     style: TextStyle(fontSize: 12),
@@ -385,6 +416,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
                     freelancer: _topFreelancers[index],
                     onTap: () {
                       // Navigate to freelancer detail
+                      _navigateToFreelancerDetail(_topFreelancers[index]);
                     },
                   );
                 },
@@ -392,6 +424,250 @@ class _ClientHomePageState extends State<ClientHomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _navigateToProjectDetail(ProjectModel project) {
+    // Navigate to project detail page
+    // You can implement this based on your routing structure
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigating to project: ${project.title}'),
+        backgroundColor: AppColors.successGreen,
+      ),
+    );
+  }
+
+  void _navigateToFreelancerDetail(UserModel freelancer) {
+    // Navigate to freelancer detail page
+    // You can implement this based on your routing structure
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigating to freelancer: ${freelancer.name}'),
+        backgroundColor: AppColors.successGreen,
+      ),
+    );
+  }
+}
+
+// All Projects Page
+class AllProjectsPage extends StatefulWidget {
+  const AllProjectsPage({super.key});
+
+  @override
+  State<AllProjectsPage> createState() => _AllProjectsPageState();
+}
+
+class _AllProjectsPageState extends State<AllProjectsPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+  
+  List<ProjectModel> _allProjects = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllProjects();
+  }
+
+  Future<void> _loadAllProjects() async {
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        final projectsStream = _firestoreService.getUserProjects(currentUser.uid);
+        final projectsSnapshot = await projectsStream.first;
+        final projects = projectsSnapshot.toList();
+        
+        // Sort projects by creation date (most recent first)
+        projects.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
+        if (mounted) {
+          setState(() {
+            _allProjects = projects;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading projects: ${e.toString()}'),
+            backgroundColor: AppColors.dangerRed,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      appBar: AppBar(
+        title: const Text(
+          'All Projects',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: AppColors.bgSecondary,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: LoadingWidget())
+          : RefreshIndicator(
+              onRefresh: _loadAllProjects,
+              child: _allProjects.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No projects found.',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _allProjects.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: ProjectCard(
+                            project: _allProjects[index],
+                            onTap: () {
+                              // Navigate to project detail
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Project: ${_allProjects[index].title}'),
+                                  backgroundColor: AppColors.successGreen,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+    );
+  }
+}
+
+// All Freelancers Page
+class AllFreelancersPage extends StatefulWidget {
+  const AllFreelancersPage({super.key});
+
+  @override
+  State<AllFreelancersPage> createState() => _AllFreelancersPageState();
+}
+
+class _AllFreelancersPageState extends State<AllFreelancersPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  
+  List<UserModel> _allFreelancers = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllFreelancers();
+  }
+
+  Future<void> _loadAllFreelancers() async {
+    try {
+      final freelancersStream = _firestoreService.getFreelancers();
+      final freelancersSnapshot = await freelancersStream.first;
+      final freelancers = freelancersSnapshot.toList();
+      
+      // Sort freelancers by rating and completed projects
+      freelancers.sort((a, b) {
+        // First sort by rating (descending)
+        int ratingCompare = b.rating.compareTo(a.rating);
+        if (ratingCompare != 0) return ratingCompare;
+        // If ratings are equal, sort by completed projects (descending)
+        return b.completedProjects.compareTo(a.completedProjects);
+      });
+      
+      if (mounted) {
+        setState(() {
+          _allFreelancers = freelancers;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading freelancers: ${e.toString()}'),
+            backgroundColor: AppColors.dangerRed,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      appBar: AppBar(
+        title: const Text(
+          'All Freelancers',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: AppColors.bgSecondary,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: LoadingWidget())
+          : RefreshIndicator(
+              onRefresh: _loadAllFreelancers,
+              child: _allFreelancers.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No freelancers found.',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _allFreelancers.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: FreelancerCard(
+                            freelancer: _allFreelancers[index],
+                            onTap: () {
+                              // Navigate to freelancer detail
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Freelancer: ${_allFreelancers[index].name}'),
+                                  backgroundColor: AppColors.successGreen,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }

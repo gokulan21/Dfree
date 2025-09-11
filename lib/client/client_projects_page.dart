@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, unused_field, unnecessary_null_comparison, unused_import
 
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -6,9 +6,11 @@ import '../../services/firestore_service.dart';
 import '../../services/project_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/project_model.dart';
+import '../../models/user_model.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/project_card.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/project_detail_dialog.dart';
 import '../../utils/constants.dart';
 
 class ClientProjectsPage extends StatefulWidget {
@@ -21,6 +23,7 @@ class ClientProjectsPage extends StatefulWidget {
 class _ClientProjectsPageState extends State<ClientProjectsPage> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
   
   List<ProjectModel> _projects = [];
   bool _isLoading = true;
@@ -152,7 +155,6 @@ class _ClientProjectsPageState extends State<ClientProjectsPage> {
         return _projects;
     }
     
-    // ignore: unnecessary_null_comparison
     if (filterStatus == null) {
       return _projects;
     }
@@ -357,69 +359,61 @@ class _ClientProjectsPageState extends State<ClientProjectsPage> {
     final cancelledProjects = _projects.where((p) => p.status == ProjectStatus.cancelled).length;
     final onHoldProjects = _projects.where((p) => p.status == ProjectStatus.onHold).length;
 
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 2.2,
+    // Fixed: Use Column with Wraps instead of GridView to avoid overflow
+    return Column(
       children: [
-        _buildStatCard('Total', totalProjects, AppColors.accentCyan),
-        _buildStatCard('In Progress', activeProjects, AppColors.warningYellow),
-        _buildStatCard('Completed', completedProjects, AppColors.successGreen),
-        _buildStatCard('Pending', pendingProjects, AppColors.textGrey),
-        _buildStatCard('Cancelled', cancelledProjects, AppColors.dangerRed),
-        _buildStatCard('On Hold', onHoldProjects, Colors.orange),
+        Row(
+          children: [
+            Expanded(child: _buildStatCard('Total', totalProjects, AppColors.accentCyan)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('In Progress', activeProjects, AppColors.warningYellow)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Completed', completedProjects, AppColors.successGreen)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildStatCard('Pending', pendingProjects, AppColors.textGrey)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Cancelled', cancelledProjects, AppColors.dangerRed)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('On Hold', onHoldProjects, Colors.orange)),
+          ],
+        ),
       ],
     );
   }
 
-  // ignore: unused_element
-  Color _getFilterColor(String filter) {
-    switch (filter) {
-      case 'pending':
-        return AppColors.textGrey;
-      case 'inProgress':
-        return AppColors.warningYellow;
-      case 'completed':
-        return AppColors.successGreen;
-      case 'cancelled':
-        return AppColors.dangerRed;
-      case 'onHold':
-        return Colors.orange;
-      default:
-        return AppColors.accentCyan;
-    }
-  }
-
   Widget _buildStatCard(String title, int count, Color color) {
     return CustomCard(
-      child: Padding(
+      child: Container(
+        height: 80, // Fixed height to prevent overflow
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Flexible(
+            FittedBox(
+              fit: BoxFit.scaleDown,
               child: Text(
                 count.toString(),
                 style: TextStyle(
                   color: color,
-                  fontSize: 18,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 2),
-            Flexible(
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
               child: Text(
                 title,
                 style: const TextStyle(
                   color: AppColors.textGrey,
-                  fontSize: 11,
+                  fontSize: 12,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -536,11 +530,16 @@ class _ClientProjectsPageState extends State<ClientProjectsPage> {
   void _showProjectDetail(ProjectModel project) {
     showDialog(
       context: context,
-      builder: (context) => ProjectDetailDialog(project: project),
+      builder: (context) => ProjectDetailDialog(
+        project: project,
+        isFreelancer: false,
+        onProjectUpdated: _loadProjects,
+      ),
     );
   }
 }
 
+// Create Project Dialog
 class CreateProjectDialog extends StatefulWidget {
   const CreateProjectDialog({super.key});
 
@@ -757,7 +756,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            DateTimeExtension(_startDate).formatDate,
+                                            _formatDate(_startDate),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -807,7 +806,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            DateTimeExtension(_dueDate).formatDate,
+                                            _formatDate(_dueDate),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -1020,6 +1019,10 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
     }
   }
 
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
   Future<void> _createProject() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -1101,349 +1104,5 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
         });
       }
     }
-  }
-}
-
-class ProjectDetailDialog extends StatelessWidget {
-  final ProjectModel project;
-
-  const ProjectDetailDialog({super.key, required this.project});
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    project.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Status and Priority
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(project.status).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _getStatusDisplayName(project.status),
-                            style: TextStyle(
-                              color: _getStatusColor(project.status),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(project.priority).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _getPriorityDisplayName(project.priority),
-                            style: TextStyle(
-                              color: _getPriorityColor(project.priority),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      project.description,
-                      style: const TextStyle(
-                        color: AppColors.textGrey,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Project Details
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Budget',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '\${project.budget.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  color: AppColors.successGreen,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Progress',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${project.progress}%',
-                                style: const TextStyle(
-                                  color: AppColors.accentCyan,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Dates
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Start Date',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateTimeExtension(project.startDate).formatDate,
-                                style: const TextStyle(
-                                  color: AppColors.textGrey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Due Date',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateTimeExtension(project.dueDate).formatDate,
-                                style: TextStyle(
-                                  color: project.isOverdue ? AppColors.dangerRed : AppColors.textGrey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Skills
-                    const Text(
-                      'Required Skills',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: project.skills.map((skill) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentCyan.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            skill,
-                            style: const TextStyle(
-                              color: AppColors.accentCyan,
-                              fontSize: 12,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Action buttons
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (project.freelancerId == null) ...[
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Show freelancer selection
-                    },
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('Assign Freelancer'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentCyan,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Edit project
-                  },
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Edit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentPink,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getStatusDisplayName(ProjectStatus status) {
-    switch (status) {
-      case ProjectStatus.pending:
-        return 'Pending';
-      case ProjectStatus.inProgress:
-        return 'In Progress';
-      case ProjectStatus.completed:
-        return 'Completed';
-      case ProjectStatus.cancelled:
-        return 'Cancelled';
-      case ProjectStatus.onHold:
-        return 'On Hold';
-    }
-  }
-
-  String _getPriorityDisplayName(Priority priority) {
-    switch (priority) {
-      case Priority.low:
-        return 'Low';
-      case Priority.medium:
-        return 'Medium';
-      case Priority.high:
-        return 'High';
-      case Priority.urgent:
-        return 'Urgent';
-    }
-  }
-
-  Color _getStatusColor(ProjectStatus status) {
-    switch (status) {
-      case ProjectStatus.pending:
-        return AppColors.warningYellow;
-      case ProjectStatus.inProgress:
-        return AppColors.accentCyan;
-      case ProjectStatus.completed:
-        return AppColors.successGreen;
-      case ProjectStatus.cancelled:
-        return AppColors.dangerRed;
-      case ProjectStatus.onHold:
-        return AppColors.textGrey;
-    }
-  }
-
-  Color _getPriorityColor(Priority priority) {
-    switch (priority) {
-      case Priority.low:
-        return AppColors.successGreen;
-      case Priority.medium:
-        return AppColors.warningYellow;
-      case Priority.high:
-        return AppColors.dangerRed;
-      case Priority.urgent:
-        return AppColors.dangerRed;
-    }
-  }
-}
-
-// Extension methods for DateTime formatting - using existing formatDate from constants
-extension LocalDateTimeExtension on DateTime {
-  String get formatDate {
-    return '${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year';
   }
 }
