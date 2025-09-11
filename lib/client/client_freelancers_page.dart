@@ -640,7 +640,6 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
         freelancer: freelancer,
         availableProjects: _availableProjects,
         onHireFreelancer: _hireFreelancer,
-        onSendMessage: _sendMessage,
       ),
     );
   }
@@ -676,134 +675,19 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
       _showErrorSnackBar('Failed to assign freelancer: ${e.toString()}');
     }
   }
-
-  Future<void> _sendMessage(UserModel freelancer) async {
-    final TextEditingController messageController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: AppColors.cardColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Message ${freelancer.name}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: messageController,
-                style: const TextStyle(color: Colors.white),
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Type your message here...',
-                  hintStyle: const TextStyle(color: AppColors.textGrey),
-                  filled: true,
-                  fillColor: AppColors.bgSecondary,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.accentCyan),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: AppColors.textGrey),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (messageController.text.trim().isNotEmpty) {
-                        try {
-                          final currentUserId = _firestoreService.getCurrentUserId();
-                          if (currentUserId != null) {
-                            await _firestoreService.sendMessageToFreelancer(
-                              freelancerId: freelancer.id,
-                              clientId: currentUserId,
-                              message: messageController.text.trim(),
-                            );
-                            
-                            if (mounted) {
-                              // ignore: use_build_context_synchronously
-                              Navigator.pop(context);
-                              // ignore: use_build_context_synchronously
-                              Navigator.pop(context); // Close freelancer detail dialog
-                              _showSuccessSnackBar('Message sent to ${freelancer.name}');
-                            }
-                          }
-                        } catch (e) {
-                          _showErrorSnackBar('Failed to send message: ${e.toString()}');
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentCyan,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Send'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-// Enhanced FreelancerDetailDialog with proper implementation
+// Enhanced FreelancerDetailDialog with Send Message functionality removed
 class FreelancerDetailDialog extends StatelessWidget {
   final UserModel freelancer;
   final List<ProjectModel> availableProjects;
   final Function(UserModel, ProjectModel) onHireFreelancer;
-  final Function(UserModel) onSendMessage;
 
   const FreelancerDetailDialog({
     super.key,
     required this.freelancer,
     required this.availableProjects,
     required this.onHireFreelancer,
-    required this.onSendMessage,
   });
 
   @override
@@ -1027,68 +911,18 @@ class FreelancerDetailDialog extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 400) {
-          return Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => onSendMessage(freelancer),
-                  icon: const Icon(Icons.message),
-                  label: const Text('Send Message'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentCyan,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showProjectSelection(context),
-                  icon: const Icon(Icons.work),
-                  label: const Text('Hire'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentPink,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => onSendMessage(freelancer),
-                icon: const Icon(Icons.message),
-                label: const Text('Send Message'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentCyan,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _showProjectSelection(context),
-                icon: const Icon(Icons.work),
-                label: const Text('Hire'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentPink,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => _showProjectSelection(context),
+        icon: const Icon(Icons.work),
+        label: const Text('Hire Freelancer'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.accentPink,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
     );
   }
 
@@ -1238,7 +1072,7 @@ class ProjectSelectionDialog extends StatelessWidget {
                                 size: 16,
                               ),
                               Text(
-                                '\$${project.budget.toStringAsFixed(0)}',
+                                '\${project.budget.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   color: AppColors.successGreen,
                                   fontSize: 14,
