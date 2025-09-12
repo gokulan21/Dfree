@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/firestore_service.dart';
@@ -88,31 +90,8 @@ class _ClientReportsPageState extends State<ClientReportsPage> {
               _buildKeyMetrics(),
               const SizedBox(height: 24),
               
-              // Charts Section
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 1024) {
-                    return Column(
-                      children: [
-                        _buildProjectStatusChart(),
-                        const SizedBox(height: 16),
-                        _buildBudgetAnalysis(),
-                      ],
-                    );
-                  } else {
-                    return IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _buildProjectStatusChart()),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildBudgetAnalysis()),
-                        ],
-                      ),
-                    );
-                  }
-                },
-              ),
+              // Project Status Chart - Full Width
+              _buildProjectStatusChart(),
               const SizedBox(height: 24),
               
               // Performance Overview
@@ -399,101 +378,6 @@ class _ClientReportsPageState extends State<ClientReportsPage> {
     );
   }
 
-  Widget _buildBudgetAnalysis() {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Budget Analysis',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            
-            // Budget breakdown
-            _buildBudgetItem(
-              'Total Budget',
-              _totalBudget,
-              AppColors.accentCyan,
-            ),
-            const SizedBox(height: 10),
-            _buildBudgetItem(
-              'Amount Paid',
-              _totalPaid,
-              AppColors.successGreen,
-            ),
-            const SizedBox(height: 10),
-            _buildBudgetItem(
-              'Remaining',
-              _totalBudget - _totalPaid,
-              AppColors.warningYellow,
-            ),
-            const SizedBox(height: 20),
-            
-            // Progress bar
-            const Text(
-              'Budget Utilization',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: _totalBudget > 0 ? (_totalPaid / _totalBudget).clamp(0.0, 1.0) : 0.0,
-              backgroundColor: Colors.grey[700],
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.successGreen),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _totalBudget > 0 
-                ? '${((_totalPaid / _totalBudget) * 100).clamp(0.0, 100.0).toStringAsFixed(1)}% utilized'
-                : '0% utilized',
-              style: const TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBudgetItem(String label, double amount, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Text(
-          '\$${amount.toStringAsFixed(0)}',
-          style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPerformanceOverview() {
     return CustomCard(
       child: Padding(
@@ -512,68 +396,36 @@ class _ClientReportsPageState extends State<ClientReportsPage> {
             ),
             const SizedBox(height: 20),
             
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 600) {
-                  return Column(
-                    children: [
-                      _buildPerformanceMetric(
-                        'Project Success Rate',
-                        '${_getSuccessRate().toStringAsFixed(1)}%',
-                        AppColors.successGreen,
-                        Icons.check_circle_outline,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPerformanceMetric(
-                        'Avg. Project Duration',
-                        '${_getAvgDuration()} days',
-                        AppColors.accentCyan,
-                        Icons.schedule,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPerformanceMetric(
-                        'Client Satisfaction',
-                        '${_averageRating.toStringAsFixed(1)}/5.0',
-                        AppColors.accentPink,
-                        Icons.star,
-                      ),
-                    ],
-                  );
-                } else {
-                  return IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Project Success Rate',
-                            '${_getSuccessRate().toStringAsFixed(1)}%',
-                            AppColors.successGreen,
-                            Icons.check_circle_outline,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Avg. Project Duration',
-                            '${_getAvgDuration()} days',
-                            AppColors.accentCyan,
-                            Icons.schedule,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Client Satisfaction',
-                            '${_averageRating.toStringAsFixed(1)}/5.0',
-                            AppColors.accentPink,
-                            Icons.star,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
+            // Always horizontal layout for performance metrics
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Project Success Rate',
+                    '${_getSuccessRate().toStringAsFixed(1)}%',
+                    AppColors.successGreen,
+                    Icons.check_circle_outline,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Avg. Project Duration',
+                    '${_getAvgDuration()} days',
+                    AppColors.accentCyan,
+                    Icons.schedule,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Client Satisfaction',
+                    '${_averageRating.toStringAsFixed(1)}/5.0',
+                    AppColors.accentPink,
+                    Icons.star,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -583,7 +435,7 @@ class _ClientReportsPageState extends State<ClientReportsPage> {
 
   Widget _buildPerformanceMetric(String title, String value, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -592,23 +444,25 @@ class _ClientReportsPageState extends State<ClientReportsPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 6),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
               color: color,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             title,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,

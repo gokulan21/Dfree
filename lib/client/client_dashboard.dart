@@ -116,31 +116,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
-            padding: const EdgeInsets.all(8),
-            constraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.accentCyan, AppColors.accentPink],
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
+
         ],
       ),
     );

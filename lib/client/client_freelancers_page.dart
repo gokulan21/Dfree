@@ -198,15 +198,6 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Find Freelancers',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
               Text(
                 '${_filteredFreelancers.length} freelancers available',
                 style: const TextStyle(

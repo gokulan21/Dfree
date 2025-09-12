@@ -197,18 +197,7 @@ class _ClientSettingsPageState extends State<ClientSettingsPage> {
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          const Text(
-            'Account Settings',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 24),
-          
+        children: [          
           // Profile Section - Now takes full width
           _buildProfileSection(),
           const SizedBox(height: 24),
