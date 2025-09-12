@@ -398,68 +398,36 @@ class _FreelancerReportsPageState extends State<FreelancerReportsPage> {
             ),
             const SizedBox(height: 20),
             
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 600) {
-                  return Column(
-                    children: [
-                      _buildPerformanceMetric(
-                        'Success Rate',
-                        '${_getSuccessRate().toStringAsFixed(1)}%',
-                        AppColors.successGreen,
-                        Icons.check_circle_outline,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPerformanceMetric(
-                        'Avg. Project Duration',
-                        '${_getAvgDuration()} days',
-                        AppColors.accentCyan,
-                        Icons.schedule,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPerformanceMetric(
-                        'Client Retention',
-                        '${_getClientRetention().toStringAsFixed(1)}%',
-                        AppColors.accentPink,
-                        Icons.people,
-                      ),
-                    ],
-                  );
-                } else {
-                  return IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Success Rate',
-                            '${_getSuccessRate().toStringAsFixed(1)}%',
-                            AppColors.successGreen,
-                            Icons.check_circle_outline,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Avg. Project Duration',
-                            '${_getAvgDuration()} days',
-                            AppColors.accentCyan,
-                            Icons.schedule,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPerformanceMetric(
-                            'Client Retention',
-                            '${_getClientRetention().toStringAsFixed(1)}%',
-                            AppColors.accentPink,
-                            Icons.people,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
+            // Always horizontal layout
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Success Rate',
+                    '${_getSuccessRate().toStringAsFixed(1)}%',
+                    AppColors.successGreen,
+                    Icons.check_circle_outline,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Avg. Project Duration',
+                    '${_getAvgDuration()} days',
+                    AppColors.accentCyan,
+                    Icons.schedule,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPerformanceMetric(
+                    'Client Retention',
+                    '${_getClientRetention().toStringAsFixed(1)}%',
+                    AppColors.accentPink,
+                    Icons.people,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
