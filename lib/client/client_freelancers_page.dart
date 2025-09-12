@@ -197,7 +197,7 @@ class _ClientFreelancersPageState extends State<ClientFreelancersPage> {
         if (constraints.maxWidth < 600) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            children: [             
               Text(
                 '${_filteredFreelancers.length} freelancers available',
                 style: const TextStyle(
