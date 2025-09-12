@@ -112,30 +112,6 @@ class _FreelancerDashboardState extends State<FreelancerDashboard> {
               maxLines: 1,
             ),
           ),
-          // Notification button
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-          const SizedBox(width: 8),
-          // Profile avatar
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.accentCyan, AppColors.accentPink],
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
         ],
       ),
     );
