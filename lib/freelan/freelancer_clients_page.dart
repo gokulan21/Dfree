@@ -113,29 +113,6 @@ class _FreelancerClientsPageState extends State<FreelancerClientsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'My Clients',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${_clients.length} clients',
-                style: const TextStyle(
-                  color: AppColors.textGrey,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
           // Clients Grid
           if (_clients.isEmpty)
             CustomCard(

@@ -184,17 +184,6 @@ class _FreelancerSettingsPageState extends State<FreelancerSettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          const Text(
-            'Profile Settings',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 24),
-
           // Profile Section
           LayoutBuilder(
             builder: (context, constraints) {

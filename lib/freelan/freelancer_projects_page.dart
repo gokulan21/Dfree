@@ -154,20 +154,7 @@ class _FreelancerProjectsPageState extends State<FreelancerProjectsPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Page Title
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Text(
-                'My Projects',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
+          children: [          
             // Filters
             _buildFilters(),
             const SizedBox(height: 16),

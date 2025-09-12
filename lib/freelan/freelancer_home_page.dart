@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
@@ -22,7 +24,6 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
   
   Map<String, dynamic> _dashboardMetrics = {};
   List<ProjectModel> _activeProjects = [];
-  List<ProjectModel> _availableProjects = [];
   bool _isLoading = true;
 
   @override
@@ -42,14 +43,9 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
         final activeProjectsStream = _projectService.getFreelancerProjects(currentUser.uid);
         final activeProjectsSnapshot = await activeProjectsStream.first;
         
-        // Load available projects
-        final availableProjectsStream = _projectService.getAvailableProjects();
-        final availableProjectsSnapshot = await availableProjectsStream.first;
-        
         setState(() {
           _dashboardMetrics = metrics;
-          _activeProjects = activeProjectsSnapshot.take(5).toList();
-          _availableProjects = availableProjectsSnapshot.take(6).toList();
+          _activeProjects = activeProjectsSnapshot;
           _isLoading = false;
         });
       }
@@ -68,6 +64,19 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
     }
   }
 
+  void _navigateToAllProjects() {
+    // Navigate to all projects page - implement this navigation as needed
+    // For now, show a dialog with all projects
+    _showAllProjectsDialog();
+  }
+
+  void _showAllProjectsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AllProjectsDialog(projects: _activeProjects),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -77,7 +86,7 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16), // Reduced padding
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -89,30 +98,9 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
             _buildMetricsSection(),
             const SizedBox(height: 24),
             
-            // Active Projects and Available Projects
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 1024) {
-                  return Column(
-                    children: [
-                      _buildActiveProjects(),
-                      const SizedBox(height: 16),
-                      _buildAvailableProjects(),
-                    ],
-                  );
-                } else {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildActiveProjects()),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildAvailableProjects()),
-                    ],
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 20), // Add bottom padding
+            // Active Projects Section (Full Width)
+            _buildActiveProjects(),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -123,7 +111,7 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
     return CustomCard(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20), // Reduced padding
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [AppColors.accentPink, AppColors.accentCyan],
@@ -134,22 +122,22 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Important for preventing overflow
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'Welcome back, Freelancer!',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 24, // Reduced font size
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Find new projects and manage your work efficiently',
+              'Manage your projects and track your progress',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 14, // Reduced font size
+                fontSize: 14,
               ),
             ),
           ],
@@ -169,9 +157,9 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 12, // Reduced spacing
-          mainAxisSpacing: 12, // Reduced spacing
-          childAspectRatio: 1.6, // Adjusted ratio to prevent overflow
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.6,
           children: [
             _buildMetricCard(
               'Active Projects',
@@ -206,21 +194,21 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
   Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(16), // Reduced padding
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min, // Important
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(icon, color: color, size: 24),
-                Flexible( // Use Flexible instead of direct Text
+                Flexible(
                   child: Text(
                     value,
                     style: TextStyle(
                       color: color,
-                      fontSize: 20, // Reduced font size
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -228,17 +216,17 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Reduced spacing
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
                 color: AppColors.textGrey,
-                fontSize: 12, // Reduced font size
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              maxLines: 2, // Allow text wrapping
+              maxLines: 2,
             ),
           ],
         ),
@@ -247,121 +235,58 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
   }
 
   Widget _buildActiveProjects() {
+    // Show only recent 3 projects
+    final recentProjects = _activeProjects.take(3).toList();
+    
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(20), // Reduced padding
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Important
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded( // Wrap with Expanded
+                const Expanded(
                   child: Text(
-                    'Active Projects',
+                    'Recent Projects',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18, // Reduced font size
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // Navigate to projects page
-                  },
+                  onPressed: _navigateToAllProjects,
                   child: const Text('View All', style: TextStyle(fontSize: 14)),
                 ),
               ],
             ),
-            const SizedBox(height: 12), // Reduced spacing
+            const SizedBox(height: 12),
             if (_activeProjects.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'No active projects. Browse available projects to get started!',
+                    'No active projects yet. Start applying for projects to see them here!',
                     style: TextStyle(color: AppColors.textGrey, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ),
               )
             else
-              ListView.separated( // Use separated for better spacing control
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _activeProjects.length,
+                itemCount: recentProjects.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return ProjectCard(
-                    project: _activeProjects[index],
-                    onTap: () {
-                      // Navigate to project detail
-                    },
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvailableProjects() {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20), // Reduced padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Important
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded( // Wrap with Expanded
-                  child: Text(
-                    'Available Projects',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18, // Reduced font size
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to browse projects
-                  },
-                  child: const Text('Browse All', style: TextStyle(fontSize: 14)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12), // Reduced spacing
-            if (_availableProjects.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'No projects available at the moment.',
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
-            else
-              ListView.separated( // Use separated for better spacing control
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _availableProjects.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return ProjectCard(
-                    project: _availableProjects[index],
-                    onTap: () => _showProjectDetail(_availableProjects[index]),
-                    showApplyButton: true,
+                    project: recentProjects[index],
+                    onTap: () => _showProjectDetail(recentProjects[index]),
                   );
                 },
               ),
@@ -382,6 +307,98 @@ class _FreelancerHomePageState extends State<FreelancerHomePage> {
   }
 }
 
+// Dialog to show all projects
+class AllProjectsDialog extends StatelessWidget {
+  final List<ProjectModel> projects;
+
+  const AllProjectsDialog({
+    super.key,
+    required this.projects,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          minWidth: 300,
+          minHeight: 400,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'All Active Projects',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Projects List
+              Expanded(
+                child: projects.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No active projects found.',
+                          style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: projects.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          return ProjectCard(
+                            project: projects[index],
+                            onTap: () {
+                              Navigator.pop(context); // Close dialog first
+                              _showProjectDetail(context, projects[index]);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showProjectDetail(BuildContext context, ProjectModel project) {
+    showDialog(
+      context: context,
+      builder: (context) => ProjectDetailDialog(
+        project: project,
+        isFreelancer: true,
+      ),
+    );
+  }
+}
+
+// Keep the existing ProjectDetailDialog class as it was
 class ProjectDetailDialog extends StatefulWidget {
   final ProjectModel project;
   final bool isFreelancer;
@@ -398,7 +415,7 @@ class ProjectDetailDialog extends StatefulWidget {
 
 class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
   final TextEditingController _applicationController = TextEditingController();
-  bool _isApplying = false;
+  final bool _isApplying = false;
 
   @override
   void dispose() {
@@ -415,16 +432,16 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.9, // Responsive width
-          maxHeight: MediaQuery.of(context).size.height * 0.8, // Responsive height
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
           minWidth: 300,
           minHeight: 400,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20), // Reduced padding
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // Important
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Header
               Row(
@@ -434,7 +451,7 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
                       widget.project.title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18, // Reduced font size
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -456,7 +473,7 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Project Details
-                      Wrap( // Use Wrap instead of Row for better overflow handling
+                      Wrap(
                         spacing: 12,
                         runSpacing: 8,
                         children: [
@@ -566,10 +583,11 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
                         }).toList(),
                       ),
                       
-                      if (widget.isFreelancer) ...[
+                      // Show progress if this is an active project
+                      if (widget.project.progress > 0) ...[
                         const SizedBox(height: 20),
                         const Text(
-                          'Application Message',
+                          'Progress',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -577,24 +595,21 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        TextField(
-                          controller: _applicationController,
-                          maxLines: 4,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Write a compelling message to the client...',
-                            hintStyle: const TextStyle(color: AppColors.textGrey),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(color: AppColors.borderColor),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(color: AppColors.accentCyan),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: widget.project.progress / 100,
+                            backgroundColor: AppColors.borderColor,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentCyan),
+                            minHeight: 6,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${widget.project.progress}% Complete',
+                          style: const TextStyle(
+                            color: AppColors.textGrey,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -602,91 +617,11 @@ class _ProjectDetailDialogState extends State<ProjectDetailDialog> {
                   ),
                 ),
               ),
-              
-              // Action buttons
-              if (widget.isFreelancer) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isApplying ? null : _applyForProject,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentPink,
-                      ),
-                      child: _isApplying
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Apply for Project'),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _applyForProject() async {
-    if (_applicationController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please write an application message'),
-          backgroundColor: AppColors.dangerRed,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isApplying = true;
-    });
-
-    try {
-      final currentUser = AuthService().currentUser;
-      if (currentUser == null) throw Exception('User not authenticated');
-
-      await ProjectService().applyForProject(
-        widget.project.id,
-        currentUser.uid,
-        _applicationController.text.trim(),
-      );
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Application submitted successfully!'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error submitting application: ${e.toString()}'),
-            backgroundColor: AppColors.dangerRed,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isApplying = false;
-        });
-      }
-    }
   }
 
   Color _getPriorityColor(Priority priority) {

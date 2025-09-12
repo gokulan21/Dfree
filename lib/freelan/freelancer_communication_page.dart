@@ -37,6 +37,11 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return _buildContent();
+  }
+
   Future<void> _initializeChat() async {
     try {
       setState(() {
@@ -109,25 +114,6 @@ class _FreelancerCommunicationPageState extends State<FreelancerCommunicationPag
       return otherParticipantName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
              (chatRoom.lastMessage ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      appBar: AppBar(
-        title: const Text(
-          'Communication',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.bgPrimary,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SafeArea(
-        child: _buildContent(),
-      ),
-    );
   }
 
   Widget _buildContent() {
