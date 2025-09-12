@@ -43,277 +43,305 @@ class _ProgressUpdateDialogState extends State<ProgressUpdateDialog> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
-        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Row(
-              children: [
-                const Icon(
-                  Icons.trending_up,
-                  color: AppColors.accentCyan,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Update Progress',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.textGrey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Project info
+            // Fixed Header
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.bgSecondary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
                 children: [
-                  Text(
-                    widget.project.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  const Icon(
+                    Icons.trending_up,
+                    color: AppColors.accentCyan,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Update Progress',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Client: ${widget.project.clientName}',
-                    style: const TextStyle(
-                      color: AppColors.textGrey,
-                      fontSize: 14,
-                    ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: AppColors.textGrey),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Current Progress
-            Text(
-              'Current Progress: ${widget.project.progress}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
             
-            // Progress Bar
-            Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: AppColors.borderColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: FractionallySizedBox(
-                widthFactor: widget.project.progress / 100,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.accentCyan,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Progress Options
-            const Text(
-              'Update to:',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Progress Buttons
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.2,
-              children: _progressOptions.map((progress) {
-                final isSelected = _selectedProgress == progress;
-                final isDisabled = progress <= widget.project.progress;
-                final isCompleted = progress == 100;
-                
-                return GestureDetector(
-                  onTap: isDisabled ? null : () {
-                    setState(() {
-                      _selectedProgress = progress;
-                    });
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isCompleted ? AppColors.successGreen.withOpacity(0.2) : AppColors.accentCyan.withOpacity(0.2))
-                          : (isDisabled ? AppColors.borderColor.withOpacity(0.3) : AppColors.bgSecondary),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
-                            : (isDisabled ? AppColors.borderColor : AppColors.textGrey),
-                        width: isSelected ? 2 : 1,
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Project info
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgSecondary,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-                          color: isSelected
-                              ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
-                              : (isDisabled ? AppColors.borderColor : AppColors.textGrey),
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$progress%',
-                          style: TextStyle(
-                            color: isSelected
-                                ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
-                                : (isDisabled ? AppColors.borderColor : Colors.white),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (isCompleted) ...[
-                          const SizedBox(height: 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'Complete',
-                            style: TextStyle(
-                              color: isSelected ? AppColors.successGreen : AppColors.textGrey,
-                              fontSize: 10,
+                            widget.project.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Client: ${widget.project.clientName}',
+                            style: const TextStyle(
+                              color: AppColors.textGrey,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-            
-            if (_selectedProgress == 100) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.successGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.successGreen.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: AppColors.successGreen,
-                      size: 20,
+                    const SizedBox(height: 24),
+
+                    // Current Progress
+                    Text(
+                      'Current Progress: ${widget.project.progress}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Marking as 100% will complete the project and notify the client.',
-                        style: const TextStyle(
-                          color: AppColors.successGreen,
-                          fontSize: 12,
+                    const SizedBox(height: 8),
+                    
+                    // Progress Bar
+                    Container(
+                      height: 8,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppColors.borderColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: widget.project.progress / 100,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.accentCyan,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Progress Options
+                    const Text(
+                      'Update to:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Progress Buttons - Using Wrap instead of GridView for better responsiveness
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _progressOptions.map((progress) {
+                        final isSelected = _selectedProgress == progress;
+                        final isDisabled = progress <= widget.project.progress;
+                        final isCompleted = progress == 100;
+                        
+                        return GestureDetector(
+                          onTap: isDisabled ? null : () {
+                            setState(() {
+                              _selectedProgress = progress;
+                            });
+                          },
+                          child: Container(
+                            width: (MediaQuery.of(context).size.width - 120) / 4 - 9, // Responsive width
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (isCompleted ? AppColors.successGreen.withOpacity(0.2) : AppColors.accentCyan.withOpacity(0.2))
+                                  : (isDisabled ? AppColors.borderColor.withOpacity(0.3) : AppColors.bgSecondary),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
+                                    : (isDisabled ? AppColors.borderColor : AppColors.textGrey),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  color: isSelected
+                                      ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
+                                      : (isDisabled ? AppColors.borderColor : AppColors.textGrey),
+                                  size: 20,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$progress%',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? (isCompleted ? AppColors.successGreen : AppColors.accentCyan)
+                                        : (isDisabled ? AppColors.borderColor : Colors.white),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (isCompleted) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Complete',
+                                    style: TextStyle(
+                                      color: isSelected ? AppColors.successGreen : AppColors.textGrey,
+                                      fontSize: 8,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    
+                    if (_selectedProgress == 100) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.successGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.successGreen.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: AppColors.successGreen,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Marking as 100% will complete the project and notify the client.',
+                                style: const TextStyle(
+                                  color: AppColors.successGreen,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    if (_error != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerRed.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.dangerRed.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: AppColors.dangerRed,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-            ],
+            ),
 
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.dangerRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.dangerRed.withOpacity(0.3),
-                  ),
-                ),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: AppColors.dangerRed,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _isUpdating ? null : () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.borderColor),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: AppColors.textGrey),
+            // Fixed Footer with Action Buttons
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isUpdating ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.borderColor),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: AppColors.textGrey),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: (_isUpdating || _selectedProgress <= widget.project.progress) 
-                        ? null 
-                        : _updateProgress,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _selectedProgress == 100 
-                          ? AppColors.successGreen 
-                          : AppColors.accentCyan,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isUpdating
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: (_isUpdating || _selectedProgress <= widget.project.progress) 
+                          ? null 
+                          : _updateProgress,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selectedProgress == 100 
+                            ? AppColors.successGreen 
+                            : AppColors.accentCyan,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: _isUpdating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              _selectedProgress == 100 ? 'Complete Project' : 'Update Progress',
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          )
-                        : Text(_selectedProgress == 100 ? 'Complete Project' : 'Update Progress'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

@@ -75,40 +75,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _handleDemoLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Pass the selected role for validation
-      await _authService.signInDemo('demo', _selectedRole);
-
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(
-          _selectedRole == 'client' ? '/client-dashboard' : '/freelancer-dashboard'
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = e.toString();
-        
-        // Clean up the error message
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        
-        _showErrorDialog('Demo Login Failed', errorMessage);
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -338,7 +304,7 @@ class _LoginPageState extends State<LoginPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please enter your email';
                               }
-                              if (!value.trim().isValidEmail) {
+                              if (!EmailValidator(value.trim()).isValidEmail) {
                                 return 'Please enter a valid email';
                               }
                               return null;
@@ -449,43 +415,6 @@ class _LoginPageState extends State<LoginPage> {
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Demo Login Button
-                    Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF00D4FF), width: 2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleDemoLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.play_arrow, color: Color(0xFF00D4FF)),
-                            const SizedBox(width: 8),
-                            _isLoading
-                                ? const LoadingWidget(size: 20, color: Color(0xFF00D4FF))
-                                : const Text(
-                                    'Demo Login',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF00D4FF),
                                     ),
                                   ),
                           ],
@@ -606,7 +535,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (emailController.text.trim().isValidEmail) {
+              if (EmailValidator(emailController.text.trim()).isValidEmail) {
                 try {
                   await _authService.resetPassword(emailController.text.trim());
                   if (mounted) {
@@ -645,5 +574,18 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+  }
+
+  // Extension method for email validation (if not defined elsewhere)
+  @override
+  void initState() {
+    super.initState();
+  }
+}
+
+// Email validation extension
+extension EmailValidator on String {
+  bool get isValidEmail {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(this);
   }
 }
